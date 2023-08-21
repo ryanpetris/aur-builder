@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-func CloneUpstream(pkgbase string, url string, branch string) error {
+func CloneUpstream(pkgbase string, url string, tag string) error {
 	upstreamPath := config.GetUpstreamPath(pkgbase)
 	gitPath := path.Join(upstreamPath, ".git")
 
@@ -18,18 +18,17 @@ func CloneUpstream(pkgbase string, url string, branch string) error {
 		}
 	}
 
-	var branchRef plumbing.ReferenceName
-
-	if branch != "" {
-		branchRef = plumbing.NewBranchReferenceName(CleanBranchName(branch))
+	cloneOptions := &git.CloneOptions{
+		URL:   url,
+		Depth: 1,
 	}
 
-	_, err := git.PlainClone(upstreamPath, false, &git.CloneOptions{
-		URL:           url,
-		Depth:         1,
-		ReferenceName: branchRef,
-		SingleBranch:  true,
-	})
+	if tag != "" {
+		cloneOptions.ReferenceName = plumbing.NewTagReferenceName(CleanTagName(tag))
+		cloneOptions.SingleBranch = true
+	}
+
+	_, err := git.PlainClone(upstreamPath, false, cloneOptions)
 
 	if err != nil {
 		return err

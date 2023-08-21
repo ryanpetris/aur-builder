@@ -10,7 +10,7 @@ import (
 import "github.com/go-git/go-git/v5/plumbing"
 
 func PackageUpdateBranchExists(pkgbase string, pkgver string) (bool, error) {
-	remotePath := fmt.Sprintf("origin/packages/%s/%s", pkgbase, CleanBranchName(pkgver))
+	remotePath := fmt.Sprintf("origin/packages/%s/%s", pkgbase, CleanTagName(pkgver))
 	repo, err := git.PlainOpen(".")
 
 	if err != nil {
@@ -23,7 +23,7 @@ func PackageUpdateBranchExists(pkgbase string, pkgver string) (bool, error) {
 }
 
 func CreateAndSwitchToPackageUpdateBranch(pkgbase string, pkgver string) error {
-	branchRef := plumbing.NewBranchReferenceName(fmt.Sprintf("packages/%s/%s", pkgbase, CleanBranchName(pkgver)))
+	branchRef := plumbing.NewBranchReferenceName(fmt.Sprintf("packages/%s/%s", pkgbase, CleanTagName(pkgver)))
 	repo, err := git.PlainOpen(".")
 
 	if err != nil {
@@ -81,7 +81,7 @@ func SwitchToMaster() error {
 }
 
 func PushPackageBranch(pkgbase string, pkgver string) error {
-	branchRef := fmt.Sprintf("packages/%s/%s", pkgbase, CleanBranchName(pkgver))
+	branchRef := fmt.Sprintf("packages/%s/%s", pkgbase, CleanTagName(pkgver))
 	repo, err := git.PlainOpen(".")
 
 	if err != nil {

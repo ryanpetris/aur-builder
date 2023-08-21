@@ -2,6 +2,6 @@ package git
 
 import "strings"
 
-func CleanBranchName(branch string) string {
+func CleanTagName(branch string) string {
 	return strings.Replace(branch, ":", "-", -1)
 }
