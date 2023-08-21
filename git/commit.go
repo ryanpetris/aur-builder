@@ -34,7 +34,7 @@ func Commit(message string) error {
 		cmdParts = append(cmdParts, "-c", fmt.Sprintf("user.name=%s", ghActor), "-c", fmt.Sprintf("user.email=%s@users.noreply.github.com", ghActor))
 	}
 
-	cmdParts = append(cmdParts, "-m", message)
+	cmdParts = append(cmdParts, "commit", "-m", message)
 
 	cmd := exec.Command("git", cmdParts[:]...)
 
