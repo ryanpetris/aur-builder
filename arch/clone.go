@@ -8,7 +8,7 @@ import (
 	"github.com/ryanpetris/aur-builder/pkg"
 )
 
-func ClonePackage(pkgbase string) error {
+func ClonePackage(pkgbase string, version string) error {
 	if exists, err := PackageExists(pkgbase); err != nil {
 		return err
 	} else if !exists {
@@ -17,7 +17,7 @@ func ClonePackage(pkgbase string) error {
 
 	aurUrl := config.GetArchPackageGitUrl(pkgbase)
 
-	if err := git.CloneUpstream(pkgbase, aurUrl, ""); err != nil {
+	if err := git.CloneUpstream(pkgbase, aurUrl, version); err != nil {
 		return err
 	}
 

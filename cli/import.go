@@ -62,7 +62,7 @@ func ImportMain(args []string) {
 		panic(fmt.Sprintf("Package %s does not exist in source %s", pkgbase, *cmdSource))
 	}
 
-	if err := ienv.PackageImport(pkgbase); err != nil {
+	if err := ienv.PackageImport(pkgbase, ""); err != nil {
 		panic(err)
 	}
 

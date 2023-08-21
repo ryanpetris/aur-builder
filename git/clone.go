@@ -21,7 +21,7 @@ func CloneUpstream(pkgbase string, url string, branch string) error {
 	var branchRef plumbing.ReferenceName
 
 	if branch != "" {
-		branchRef = plumbing.NewBranchReferenceName(branch)
+		branchRef = plumbing.NewBranchReferenceName(CleanBranchName(branch))
 	}
 
 	_, err := git.PlainClone(upstreamPath, false, &git.CloneOptions{

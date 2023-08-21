@@ -32,6 +32,6 @@ func (ienv ArchImportEnv) PackageExists(pkgbase string) (bool, error) {
 	return arch.PackageExists(pkgbase)
 }
 
-func (ienv ArchImportEnv) PackageImport(pkgbase string) error {
-	return arch.ClonePackage(pkgbase)
+func (ienv ArchImportEnv) PackageImport(pkgbase string, version string) error {
+	return arch.ClonePackage(pkgbase, version)
 }

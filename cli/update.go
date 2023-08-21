@@ -119,53 +119,34 @@ func UpdateMain(args []string) {
 			continue
 		}
 
+		if exists, err := git.PackageUpdateBranchExists(tracker.Pkgbase, tracker.RepositoryVersion); err != nil {
+			panic(err)
+		} else if exists {
+			slog.Info(fmt.Sprintf("Already have branch for updating pacakge %s to version %s. Skipping.", tracker.Pkgbase, tracker.RepositoryVersion))
+		}
+
 		slog.Info(fmt.Sprintf("Updating package %s", tracker.Pkgbase))
 
 		if cenv.IsCI() {
-			if err := git.CreateAndSwitchToPackageUpdateBranch(tracker.Pkgbase, "0"); err != nil {
+			if err := git.CreateAndSwitchToPackageUpdateBranch(tracker.Pkgbase, tracker.RepositoryVersion); err != nil {
 				panic(err)
 			}
 		}
 
-		if err := ienv.PackageImport(tracker.Pkgbase); err != nil {
-			panic(err)
-		}
-
-		pconfig, err := pkg.LoadConfig(tracker.Pkgbase)
-
-		if err != nil {
+		if err := ienv.PackageImport(tracker.Pkgbase, tracker.RepositoryVersion); err != nil {
 			panic(err)
 		}
 
 		if cenv.IsCI() {
-			if err := pconfig.Merge(tracker.Pkgbase); err != nil {
-				panic(err)
-			}
-
-			if err := pacman.GenSrcInfo(tracker.Pkgbase); err != nil {
-				panic(err)
-			}
-
-			srcinfo, err := pacman.LoadSrcinfo(tracker.Pkgbase)
-			pkgver := srcinfo[0].GetFullVersion()
-
-			if err != nil {
-				panic(err)
-			}
-
-			if err := git.CreateAndSwitchToPackageUpdateBranch(tracker.Pkgbase, pkgver); err != nil {
-				panic(err)
-			}
-
 			if err := git.AddAll(); err != nil {
 				panic(err)
 			}
 
-			if err := git.Commit(fmt.Sprintf("Update %s at version %s", tracker.Pkgbase, pkgver)); err != nil {
+			if err := git.Commit(fmt.Sprintf("Update %s at version %s", tracker.Pkgbase, tracker.RepositoryVersion)); err != nil {
 				panic(err)
 			}
 
-			if err := git.PushPackageBranch(tracker.Pkgbase, pkgver); err != nil {
+			if err := git.PushPackageBranch(tracker.Pkgbase, tracker.RepositoryVersion); err != nil {
 				panic(err)
 			}
 
