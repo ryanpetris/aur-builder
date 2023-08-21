@@ -34,5 +34,9 @@ clean:
 .PHONY: build
 build: $(BIN)
 
+.PHONY: install
+install: build ${MOFILES}
+	install -Dm755 "${BIN}" "$(DESTDIR)$(PREFIX)/bin/${BIN}"
+
 $(BIN): $(SOURCES)
 	$(GO) build $(FLAGS) -ldflags '$(LDFLAGS)' $(EXTRA_FLAGS) -o "$@"
