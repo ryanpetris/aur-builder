@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"os"
 )
 import "github.com/go-git/go-git/v5/plumbing"
 import "strings"
@@ -93,10 +95,16 @@ func PushPackageBranch(pkgbase string, pkgver string) error {
 		return err
 	}
 
-	if err := repo.Push(&git.PushOptions{
+	pushOptions := git.PushOptions{
 		RemoteName: "origin",
-		RefSpecs:   []config.RefSpec{config.RefSpec(fmt.Sprintf("+%s:refs/heads/%s", branchRef, branchRef))},
-	}); err != nil {
+		RefSpecs:   []config.RefSpec{config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/heads/%s", branchRef, branchRef))},
+	}
+
+	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
+		pushOptions.Auth = &http.BasicAuth{Username: "me", Password: ghToken}
+	}
+
+	if err := repo.Push(&pushOptions); err != nil {
 		return err
 	}
 
