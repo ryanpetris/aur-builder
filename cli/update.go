@@ -123,6 +123,7 @@ func UpdateMain(args []string) {
 			panic(err)
 		} else if exists {
 			slog.Info(fmt.Sprintf("Already have branch for updating pacakge %s to version %s. Skipping.", tracker.Pkgbase, tracker.RepositoryVersion))
+			continue
 		}
 
 		slog.Info(fmt.Sprintf("Updating package %s", tracker.Pkgbase))
