@@ -31,6 +31,9 @@ func main() {
 	case "import":
 		cli.ImportMain(args)
 
+	case "needs-build":
+		cli.NeedsBuildMain(args)
+
 	case "prepare":
 		cli.PrepareMain(args)
 

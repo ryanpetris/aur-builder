@@ -14,14 +14,6 @@ import (
 	"strings"
 )
 
-type PackageTracker struct {
-	Pkgbase           string
-	UpstreamVersion   string
-	RepositoryVersion string
-	NeedsUpdate       bool
-	Packages          []misc.PackageInfo
-}
-
 func UpdateMain(args []string) {
 	cmd := flag.NewFlagSet("update", flag.ExitOnError)
 
@@ -83,7 +75,7 @@ func UpdateMain(args []string) {
 		panic(err)
 	}
 
-	trackers := map[string]PackageTracker{}
+	trackers := map[string]misc.PackageTracker{}
 	var foundPackages []string
 
 	for _, pkginfo := range pkginfos {
@@ -92,7 +84,7 @@ func UpdateMain(args []string) {
 		if hasKey {
 			tracker.Packages = append(tracker.Packages, pkginfo)
 		} else {
-			tracker = PackageTracker{
+			tracker = misc.PackageTracker{
 				Pkgbase:           pkginfo.Pkgbase,
 				RepositoryVersion: pkginfo.FullVersion,
 				Packages:          []misc.PackageInfo{pkginfo},

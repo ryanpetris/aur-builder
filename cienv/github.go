@@ -1,7 +1,9 @@
 package cienv
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 )
@@ -27,6 +29,18 @@ func (env GithubCiEnv) CreatePR() error {
 	if err := cmd.Run(); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (env GithubCiEnv) WriteBuildPackages(pkgbase []string) error {
+	dataJson, err := json.Marshal(pkgbase)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("packages=%s", dataJson)
 
 	return nil
 }
