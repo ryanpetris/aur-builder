@@ -161,7 +161,7 @@ func UpdateMain(args []string) {
 				panic(err)
 			}
 
-			if err := git.Commit(fmt.Sprintf("Add %s at version %s", tracker.Pkgbase, pkgver)); err != nil {
+			if err := git.Commit(fmt.Sprintf("Update %s at version %s", tracker.Pkgbase, pkgver)); err != nil {
 				panic(err)
 			}
 
