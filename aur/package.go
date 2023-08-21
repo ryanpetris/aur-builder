@@ -37,7 +37,7 @@ type Package struct {
 	NumVotes   int64   `yaml:"NumVotes,omitempty"`
 	Popularity float32 `yaml:"Popularity,omitempty"`
 
-	OutOfDate bool `yaml:"OutOfDate,omitempty"`
+	OutOfDate int64 `yaml:"OutOfDate,omitempty"`
 }
 
 type PackageSearchResults struct {
