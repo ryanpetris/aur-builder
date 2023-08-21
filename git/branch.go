@@ -53,6 +53,7 @@ func CreateAndSwitchToPackageUpdateBranch(pkgbase string, pkgver string) error {
 
 	if err := worktree.Checkout(&git.CheckoutOptions{
 		Branch: branchRef,
+		Keep:   true,
 	}); err != nil {
 		return err
 	}
