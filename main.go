@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"github.com/ryanpetris/aur-builder/cli"
 	"github.com/ryanpetris/aur-builder/config"
+	"log/slog"
 	"os"
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
 	cmdConfig := flag.String("config", "", "path to configuration file")
 	flag.Parse()
 
