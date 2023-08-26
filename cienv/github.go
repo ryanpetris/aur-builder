@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-git/go-git/v5"
+	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	"os"
 	"os/exec"
 )
@@ -41,6 +43,17 @@ func (env GithubCiEnv) WriteBuildPackages(pkgbase []string) error {
 	}
 
 	fmt.Printf("packages=%s", dataJson)
+
+	return nil
+}
+
+func (env GithubCiEnv) SetCommitOptions(options *git.CommitOptions) error {
+	if ghActor := os.Getenv("GITHUB_ACTOR"); ghActor != "" {
+		options.Author = &gitobject.Signature{
+			Name:  ghActor,
+			Email: fmt.Sprintf("%s@users.noreply.github.com", ghActor),
+		}
+	}
 
 	return nil
 }

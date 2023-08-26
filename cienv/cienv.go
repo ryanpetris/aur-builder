@@ -3,12 +3,14 @@ package cienv
 import (
 	"errors"
 	"fmt"
+	"github.com/go-git/go-git/v5"
 )
 
 type CiEnv interface {
 	IsCI() bool
 	CreatePR() error
 	WriteBuildPackages(pkgbase []string) error
+	SetCommitOptions(options *git.CommitOptions) error
 }
 
 type DefaultCiEnv struct {
@@ -28,4 +30,8 @@ func (env DefaultCiEnv) WriteBuildPackages(pkgbase []string) error {
 	}
 
 	return nil
+}
+
+func (env DefaultCiEnv) SetCommitOptions(options *git.CommitOptions) error {
+	return errors.New("Not in CI environment")
 }

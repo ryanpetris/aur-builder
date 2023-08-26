@@ -1,10 +1,8 @@
 package git
 
 import (
-	"fmt"
 	"github.com/go-git/go-git/v5"
-	"os"
-	"os/exec"
+	"github.com/ryanpetris/aur-builder/cienv"
 )
 
 func AddAll() error {
@@ -28,15 +26,28 @@ func AddAll() error {
 }
 
 func Commit(message string) error {
-	var cmdParts []string
+	repo, err := git.PlainOpen(".")
 
-	if ghActor := os.Getenv("GITHUB_ACTOR"); ghActor != "" {
-		cmdParts = append(cmdParts, "-c", fmt.Sprintf("user.name=%s", ghActor), "-c", fmt.Sprintf("user.email=%s@users.noreply.github.com", ghActor))
+	if err != nil {
+		return err
 	}
 
-	cmdParts = append(cmdParts, "commit", "-m", message)
+	worktree, err := repo.Worktree()
 
-	cmd := exec.Command("git", cmdParts[:]...)
+	if err != nil {
+		return err
+	}
 
-	return cmd.Run()
+	options := git.CommitOptions{}
+	ce := cienv.FindCiEnv()
+
+	if err := ce.SetCommitOptions(&options); err != nil {
+		return err
+	}
+
+	if _, err = worktree.Commit(message, &options); err != nil {
+		return err
+	}
+
+	return nil
 }
