@@ -41,7 +41,7 @@ func Commit(message string) error {
 	options := git.CommitOptions{}
 	ce := cienv.FindCiEnv()
 
-	if err := ce.SetCommitOptions(&options); err != nil {
+	if err := ce.SetGitCommitOptions(&options); err != nil {
 		return err
 	}
 

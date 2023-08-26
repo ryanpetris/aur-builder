@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"os"
 	"os/exec"
 )
@@ -47,12 +48,20 @@ func (env GithubCiEnv) WriteBuildPackages(pkgbase []string) error {
 	return nil
 }
 
-func (env GithubCiEnv) SetCommitOptions(options *git.CommitOptions) error {
+func (env GithubCiEnv) SetGitCommitOptions(options *git.CommitOptions) error {
 	if ghActor := os.Getenv("GITHUB_ACTOR"); ghActor != "" {
 		options.Author = &gitobject.Signature{
 			Name:  ghActor,
 			Email: fmt.Sprintf("%s@users.noreply.github.com", ghActor),
 		}
+	}
+
+	return nil
+}
+
+func (env GithubCiEnv) SetGitPushOptions(options *git.PushOptions) error {
+	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
+		options.Auth = &http.BasicAuth{Username: "me", Password: ghToken}
 	}
 
 	return nil

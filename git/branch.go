@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"os"
+	"github.com/ryanpetris/aur-builder/cienv"
 )
 import "github.com/go-git/go-git/v5/plumbing"
 
@@ -93,8 +92,10 @@ func PushPackageBranch(pkgbase string, pkgver string) error {
 		RefSpecs:   []config.RefSpec{config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/heads/%s", branchRef, branchRef))},
 	}
 
-	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
-		pushOptions.Auth = &http.BasicAuth{Username: "me", Password: ghToken}
+	ce := cienv.FindCiEnv()
+
+	if err := ce.SetGitPushOptions(&pushOptions); err != nil {
+		return err
 	}
 
 	if err := repo.Push(&pushOptions); err != nil {
