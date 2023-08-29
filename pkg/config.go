@@ -14,8 +14,10 @@ type PackageConfig struct {
 
 type PackageConfigOverrides struct {
 	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
+	ClearConflicts       bool                          `yaml:"clearConflicts,omitempty"`
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
 	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
+	ClearProvides        bool                          `yaml:"clearProvides,omitempty"`
 	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
 	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
 }

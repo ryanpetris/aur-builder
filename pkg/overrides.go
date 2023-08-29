@@ -25,6 +25,14 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
+	if pconfig.Overrides.ClearConflicts {
+		err := processClearConflicts(pkgbase)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	if pconfig.Overrides.ClearDependsVersions {
 		err := processClearDependsVersions(pkgbase)
 
@@ -41,6 +49,14 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
+	if pconfig.Overrides.ClearProvides {
+		err := processClearProvides(pkgbase)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	if pconfig.Overrides.ClearSignatures {
 		err := processClearSignatures(pkgbase)
 
@@ -50,7 +66,7 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 	}
 
 	if pconfig.Overrides.RenamePackage != nil {
-		err := processOverrideRenamePackage(pkgbase, pconfig.Overrides.RenamePackage)
+		err := processRenamePackage(pkgbase, pconfig.Overrides.RenamePackage)
 
 		if err != nil {
 			return err
@@ -104,62 +120,40 @@ fi
 	return nil
 }
 
+func processClearConflicts(pkgbase string) error {
+	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
+
+	appendText := `unset conflicts`
+
+	return appendPkgbuild(pkgbase, appendText)
+}
+
 func processClearDependsVersions(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear depends versions override for pkgbase %s", pkgbase))
 
-	mergedPath := config.GetMergedPath(pkgbase)
-	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
-	pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666)
-
-	if err != nil {
-		return err
-	}
-
-	defer pkgbuild.Close()
-
 	appendText := `mapfile -t depends < <((IFS=$'\n'; echo "${depends[*]}") | sed -E 's/[<>=].*$//' | sort | uniq)`
 
-	if _, err = pkgbuild.WriteString(appendText); err != nil {
-		return err
-	}
-
-	return nil
+	return appendPkgbuild(pkgbase, appendText)
 }
 
 func processClearPkgverFunc(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
 
-	mergedPath := config.GetMergedPath(pkgbase)
-	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
-	pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666)
-
-	if err != nil {
-		return err
-	}
-
-	defer pkgbuild.Close()
-
 	appendText := `unset -f pkgver`
 
-	if _, err = pkgbuild.WriteString(appendText); err != nil {
-		return err
-	}
+	return appendPkgbuild(pkgbase, appendText)
+}
 
-	return nil
+func processClearProvides(pkgbase string) error {
+	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
+
+	appendText := `unset provides`
+
+	return appendPkgbuild(pkgbase, appendText)
 }
 
 func processClearSignatures(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear signatures override for pkgbase %s", pkgbase))
-
-	mergedPath := config.GetMergedPath(pkgbase)
-	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
-	pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666)
-
-	if err != nil {
-		return err
-	}
-
-	defer pkgbuild.Close()
 
 	appendText := `
 unset validpgpkeys
@@ -259,14 +253,10 @@ unset _new_md5sums
 unset _new_cksums
 `
 
-	if _, err = pkgbuild.WriteString(appendText); err != nil {
-		return err
-	}
-
-	return nil
+	return appendPkgbuild(pkgbase, appendText)
 }
 
-func processOverrideRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing rename package override for pkgbase %s", pkgbase))
 
 	if err := pacman.GenSrcInfo(pkgbase); err != nil {
@@ -325,6 +315,24 @@ func processOverrideRenamePackage(pkgbase string, overrides []PackageConfigOverr
 	}
 
 	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func appendPkgbuild(pkgbase string, appendText string) error {
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666)
+
+	if err != nil {
+		return err
+	}
+
+	defer pkgbuild.Close()
+
+	if _, err = pkgbuild.WriteString(fmt.Sprintf("\n%s\n", appendText)); err != nil {
 		return err
 	}
 
