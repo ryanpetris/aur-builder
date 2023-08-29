@@ -3,10 +3,14 @@ package pkg
 import (
 	"fmt"
 	"github.com/ryanpetris/aur-builder/config"
+	"github.com/ryanpetris/aur-builder/misc"
+	"github.com/ryanpetris/aur-builder/pacman"
 	"log/slog"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
+	"strings"
 	"text/template"
 )
 
@@ -39,6 +43,14 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 
 	if pconfig.Overrides.ClearSignatures {
 		err := processClearSignatures(pkgbase)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	if pconfig.Overrides.RenamePackage != nil {
+		err := processOverrideRenamePackage(pkgbase, pconfig.Overrides.RenamePackage)
 
 		if err != nil {
 			return err
@@ -252,4 +264,134 @@ unset _new_cksums
 	}
 
 	return nil
+}
+
+func processOverrideRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+	slog.Debug(fmt.Sprintf("Processing rename package override for pkgbase %s", pkgbase))
+
+	if err := pacman.GenSrcInfo(pkgbase); err != nil {
+		return err
+	}
+
+	srcinfos, err := pacman.LoadSrcinfo(pkgbase)
+
+	if err != nil {
+		return err
+	}
+
+	var pkgnames []string
+	namechangemap := map[string]string{}
+
+	for _, srcinfo := range srcinfos {
+		found := false
+
+		for _, override := range overrides {
+			if override.From == srcinfo.Pkgname || (override.From == "" && srcinfo.Pkgname == pkgbase) {
+				if override.To != "" {
+					pkgnames = append(pkgnames, override.To)
+					namechangemap[srcinfo.Pkgname] = override.To
+				}
+
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			pkgnames = append(pkgnames, srcinfo.Pkgname)
+		}
+	}
+
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	pkgbuildBytes, err := os.ReadFile(pkgbuildPath)
+
+	if err != nil {
+		return err
+	}
+
+	pkgbuild := string(pkgbuildBytes)
+
+	if result, err := replacePkgname(pkgbuild, pkgnames); err != nil {
+		return err
+	} else {
+		pkgbuild = result
+	}
+
+	if result, err := replaceFunctions(pkgbuild, namechangemap); err != nil {
+		return err
+	} else {
+		pkgbuild = result
+	}
+
+	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func replacePkgname(pkgbuild string, pkgnames []string) (string, error) {
+	pkgnameRegex, err := regexp.Compile(`^pkgname\s*=`)
+
+	if err != nil {
+		return "", err
+	}
+
+	anyvarRegex, err := regexp.Compile(`^[a-zA-Z0-9]+\s*=`)
+
+	if err != nil {
+		return "", err
+	}
+
+	oldlines := strings.Split(pkgbuild, "\n")
+	var newlines []string
+	foundPkgname := false
+	foundNext := false
+
+	for _, line := range oldlines {
+		if !foundPkgname && pkgnameRegex.MatchString(line) {
+			newnames := strings.Join(pkgnames, " ")
+
+			if len(pkgnames) > 1 {
+				newnames = fmt.Sprintf("(%s)", newnames)
+			}
+
+			newnames = fmt.Sprintf("pkgname=%s", newnames)
+
+			newlines = append(newlines, newnames)
+			foundPkgname = true
+			continue
+		}
+
+		if foundPkgname && !foundNext {
+			if anyvarRegex.MatchString(line) {
+				foundNext = true
+			} else {
+				continue
+			}
+		}
+
+		newlines = append(newlines, line)
+	}
+
+	return strings.Join(newlines, "\n"), nil
+}
+
+func replaceFunctions(pkgbuild string, namechangemap map[string]string) (string, error) {
+	re, err := regexp.Compile(`(?m)^(?P<func>package|prepare|build|check)_(?P<pkgname>[a-zA-Z0-9@._+-]+)(?P<end>\s*\()`)
+
+	if err != nil {
+		return "", err
+	}
+
+	return re.ReplaceAllStringFunc(pkgbuild, func(match string) string {
+		parts := misc.RegexGetMatchByGroup(re, match)
+
+		if newname, hasKey := namechangemap[parts["pkgname"]]; hasKey {
+			return fmt.Sprintf("%s_%s%s", parts["func"], newname, parts["end"])
+		}
+
+		return match
+	}), nil
 }

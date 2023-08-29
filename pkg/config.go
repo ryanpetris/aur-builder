@@ -13,10 +13,16 @@ type PackageConfig struct {
 }
 
 type PackageConfigOverrides struct {
-	BumpPkgrel           map[string]int `yaml:"bumpPkgrel,omitempty"`
-	ClearDependsVersions bool           `yaml:"clearDependsVersions,omitempty"`
-	ClearPkgverFunc      bool           `yaml:"clearPkgverFunc,omitempty"`
-	ClearSignatures      bool           `yaml:"clearSignatures,omitempty"`
+	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
+	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
+	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
+	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
+	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
+}
+
+type PackageConfigOverrideFromTo struct {
+	From string `yaml:"from,omitempty"`
+	To   string `yaml:"to,omitempty"`
 }
 
 func LoadConfig(pkgbase string) (*PackageConfig, error) {
