@@ -33,5 +33,5 @@ func (ienv AurImportEnv) PackageExists(pkgbase string) (bool, error) {
 }
 
 func (ienv AurImportEnv) PackageImport(pkgbase string, version string) error {
-	return aur.ClonePackage(pkgbase)
+	return aur.ClonePackage(pkgbase, version)
 }

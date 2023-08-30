@@ -8,7 +8,7 @@ import (
 	"github.com/ryanpetris/aur-builder/pkg"
 )
 
-func ClonePackage(pkgbase string) error {
+func ClonePackage(pkgbase string, version string) error {
 	if exists, err := PackageExists(pkgbase); err != nil {
 		return err
 	} else if !exists {
@@ -28,6 +28,10 @@ func ClonePackage(pkgbase string) error {
 	}
 
 	pconfig.Source = "aur"
+
+	if err := pconfig.CleanPkgrelBumpVersions(version); err != nil {
+		return err
+	}
 
 	if err := pconfig.Write(pkgbase); err != nil {
 		return err

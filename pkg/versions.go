@@ -3,10 +3,33 @@ package pkg
 import (
 	"bytes"
 	"github.com/ryanpetris/aur-builder/config"
+	"github.com/ryanpetris/aur-builder/pacman"
 	"os/exec"
 	"path"
 	"strings"
 )
+
+func (pconfig *PackageConfig) CleanPkgrelBumpVersions(pkgver string) error {
+	if pkgver == "" {
+		return nil
+	}
+
+	if pconfig.Overrides.BumpPkgrel == nil {
+		return nil
+	}
+
+	for key, _ := range pconfig.Overrides.BumpPkgrel {
+		if isNewer, _ := pacman.IsVersionNewer(key, pkgver); isNewer {
+			delete(pconfig.Overrides.BumpPkgrel, key)
+		}
+	}
+
+	if len(pconfig.Overrides.BumpPkgrel) == 0 {
+		pconfig.Overrides.BumpPkgrel = nil
+	}
+
+	return nil
+}
 
 func GetMergedVersion(pkgbase string) (string, error) {
 	basePath := config.GetMergedPath(pkgbase)

@@ -29,6 +29,10 @@ func ClonePackage(pkgbase string, version string) error {
 
 	pconfig.Source = "arch"
 
+	if err := pconfig.CleanPkgrelBumpVersions(version); err != nil {
+		return err
+	}
+
 	if err := pconfig.Write(pkgbase); err != nil {
 		return err
 	}
