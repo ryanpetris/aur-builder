@@ -3,17 +3,21 @@ package misc
 import "regexp"
 
 func RegexGetMatchByGroup(re *regexp.Regexp, str string) map[string]string {
-	names := re.SubexpNames()
-	result := map[string]string{}
+	match := re.FindStringSubmatch(str)
 
-	matches := re.FindStringSubmatch(str)
+	return RegexMapMatchByGroup(re, match)
+}
 
-	if matches == nil {
+func RegexMapMatchByGroup(re *regexp.Regexp, match []string) map[string]string {
+	if match == nil {
 		return nil
 	}
 
+	names := re.SubexpNames()
+	result := map[string]string{}
+
 	for idx, name := range names {
-		result[name] = matches[idx]
+		result[name] = match[idx]
 	}
 
 	return result

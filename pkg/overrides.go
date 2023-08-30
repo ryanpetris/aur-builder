@@ -1,14 +1,17 @@
 package pkg
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/ryanpetris/aur-builder/config"
 	"github.com/ryanpetris/aur-builder/misc"
 	"github.com/ryanpetris/aur-builder/pacman"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -207,103 +210,102 @@ func processClearProvides(pkgbase string) error {
 func processClearSignatures(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear signatures override for pkgbase %s", pkgbase))
 
-	appendText := `
-unset validpgpkeys
+	type arrayDef struct {
+		Name     string
+		OrigName string
+		Arch     string
+		Items    map[string]string
+	}
 
-_new_source=()
-_new_b2sums=()
-_new_sha512sums=()
-_new_sha384sums=()
-_new_sha256sums=()
-_new_sha224sums=()
-_new_sha1sums=()
-_new_md5sums=()
-_new_cksums=()
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	var stdoutBuf = bytes.Buffer{}
 
-for i in "${!source[@]}"; do
-    if [[ "${source[$i]}" == *.sig ]]; then
-        continue
-    fi
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(`source "%s"; declare -p | grep -E '^declare -a (source|[a-z0-9]+sums)(_[a-z0-9_]+)?='`, pkgbuildPath))
+	cmd.Stdout = &stdoutBuf
 
-    _new_source+=("${source[$i]}")
+	if err := cmd.Run(); err != nil {
+		return err
+	}
 
-	if [[ "${#b2sums[@]}" != "0" ]]; then
-    	_new_b2sums+=("${b2sums[$i]}")
-	fi
+	re, err := regexp.Compile(`\[(?P<index>[0-9]+)]="(?P<value>(?:[^\\"]|\\"|\\[^"])*?)"`)
 
-	if [[ "${#sha512sums[@]}" != "0" ]]; then
-    	_new_sha512sums+=("${sha512sums[$i]}")
-	fi
+	if err != nil {
+		return err
+	}
 
-	if [[ "${#sha384sums[@]}" != "0" ]]; then
-    	_new_sha384sums+=("${sha384sums[$i]}")
-	fi
+	var parsedArrays []arrayDef
 
-	if [[ "${#sha256sums[@]}" != "0" ]]; then
-    	_new_sha256sums+=("${sha256sums[$i]}")
-	fi
+	for _, line := range strings.Split(stdoutBuf.String(), "\n") {
+		if line == "" {
+			continue
+		}
 
-	if [[ "${#sha224sums[@]}" != "0" ]]; then
-    	_new_sha224sums+=("${sha224sums[$i]}")
-	fi
+		declareParts := strings.SplitN(line, " ", 3)
+		varParts := strings.SplitN(declareParts[2], "=", 2)
+		nameParts := strings.SplitN(varParts[0], "_", 2)
 
-	if [[ "${#sha1sums[@]}" != "0" ]]; then
-    	_new_sha1sums+=("${sha1sums[$i]}")
-	fi
+		def := arrayDef{
+			Name:     nameParts[0],
+			OrigName: varParts[0],
+			Items:    map[string]string{},
+		}
 
-	if [[ "${#md5sums[@]}" != "0" ]]; then
-    	_new_md5sums+=("${md5sums[$i]}")
-	fi
+		if len(nameParts) > 1 {
+			def.Arch = nameParts[1]
+		}
 
-	if [[ "${#cksums[@]}" != "0" ]]; then
-    	_new_b2sums+=("${cksums[$i]}")
-	fi
-done
+		matches := re.FindAllStringSubmatch(varParts[1], -1)
 
-source=("${_new_source[@]}")
+		for _, match := range matches {
+			matchMap := misc.RegexMapMatchByGroup(re, match)
 
-if [[ "${#b2sums[@]}" != "0" ]]; then
-	b2sums=("${_new_b2sums[@]}")
-fi
+			def.Items[matchMap["index"]] = matchMap["value"]
+		}
 
-if [[ "${#sha512sums[@]}" != "0" ]]; then
-	sha512sums=("${_new_sha512sums[@]}")
-fi
+		parsedArrays = append(parsedArrays, def)
+	}
 
-if [[ "${#sha384sums[@]}" != "0" ]]; then
-	sha384sums=("${_new_sha384sums[@]}")
-fi
+	appendLines := []string{"unset validpgpkeys"}
+	var affectedArrays []string
 
-if [[ "${#sha256sums[@]}" != "0" ]]; then
-	sha256sums=("${_new_sha256sums[@]}")
-fi
+	for _, item := range parsedArrays {
+		if item.Name != "source" {
+			continue
+		}
 
-if [[ "${#sha224sums[@]}" != "0" ]]; then
-	sha224sums=("${_new_sha224sums[@]}")
-fi
+		for index, value := range item.Items {
+			if strings.HasSuffix(value, ".sig") {
+				if !slices.Contains(affectedArrays, item.OrigName) {
+					affectedArrays = append(affectedArrays, item.OrigName)
+				}
 
-if [[ "${#sha1sums[@]}" != "0" ]]; then
-	sha1sums=("${_new_sha1sums[@]}")
-fi
+				appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", item.OrigName, index))
 
-if [[ "${#md5sums[@]}" != "0" ]]; then
-	md5sums=("${_new_md5sums[@]}")
-fi
+				for _, sumItem := range parsedArrays {
+					if !strings.HasSuffix(sumItem.Name, "sums") {
+						continue
+					}
 
-if [[ "${#cksums[@]}" != "0" ]]; then
-	cksums=("${_new_cksums[@]}")
-fi
+					if sumItem.Arch != item.Arch {
+						continue
+					}
 
-unset _new_source
-unset _new_b2sums
-unset _new_sha512sums
-unset _new_sha384sums
-unset _new_sha256sums
-unset _new_sha224sums
-unset _new_sha1sums
-unset _new_md5sums
-unset _new_cksums
-`
+					if !slices.Contains(affectedArrays, sumItem.OrigName) {
+						affectedArrays = append(affectedArrays, sumItem.OrigName)
+					}
+
+					appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", sumItem.OrigName, index))
+				}
+			}
+		}
+	}
+
+	for _, item := range affectedArrays {
+		appendLines = append(appendLines, fmt.Sprintf(`mapfile -t %s < <(IFS=$'\n'; echo "${%s[*]}")`, item, item))
+	}
+
+	appendText := strings.Join(appendLines, "\n")
 
 	return appendPkgbuild(pkgbase, appendText)
 }
