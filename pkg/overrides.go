@@ -497,7 +497,7 @@ func replacePkgname(pkgbuild string, pkgnames []string) (string, error) {
 		return "", err
 	}
 
-	anyvarRegex, err := regexp.Compile(`^[a-zA-Z0-9]+\s*=`)
+	anyvarRegex, err := regexp.Compile(`^[a-zA-Z0-9@._+-]+\s*=`)
 
 	if err != nil {
 		return "", err
