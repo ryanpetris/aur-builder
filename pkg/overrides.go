@@ -17,6 +17,34 @@ import (
 func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing overrides for pkgbase %s", pkgbase))
 
+	// First run functions that manipulate the PKGBUILD
+
+	if pconfig.Overrides.RenamePackage != nil {
+		err := processRenamePackage(pkgbase, pconfig.Overrides.RenamePackage)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	if pconfig.Overrides.ReplacePkgbuild != nil {
+		err := processReplacePkgbuild(pkgbase, pconfig.Overrides.ReplacePkgbuild)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	if pconfig.Overrides.RenameFunction != nil {
+		err := processRenameFunction(pkgbase, pconfig.Overrides.RenameFunction)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// Then run functions that merely append to the PKGBUILD
+
 	if pconfig.Overrides.BumpPkgrel != nil {
 		err := processBumpPkgrel(pconfig, pkgbase)
 
@@ -65,8 +93,8 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
-	if pconfig.Overrides.RenamePackage != nil {
-		err := processRenamePackage(pkgbase, pconfig.Overrides.RenamePackage)
+	if pconfig.Overrides.AppendPkgbuild != "" {
+		err := processAppendPkgbuild(pkgbase, pconfig.Overrides.AppendPkgbuild)
 
 		if err != nil {
 			return err
@@ -74,6 +102,12 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 	}
 
 	return nil
+}
+
+func processAppendPkgbuild(pkgbase string, appendText string) error {
+	slog.Debug(fmt.Sprintf("Processing append pkgbuild override for pkgbase %s", pkgbase))
+
+	return appendPkgbuild(pkgbase, appendText)
 }
 
 func processBumpPkgrel(pconfig *PackageConfig, pkgbase string) error {
@@ -121,7 +155,7 @@ fi
 }
 
 func processClearConflicts(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
+	slog.Debug(fmt.Sprintf("Processing clear conflicts override for pkgbase %s", pkgbase))
 
 	appendText := `unset conflicts`
 
@@ -145,7 +179,7 @@ func processClearPkgverFunc(pkgbase string) error {
 }
 
 func processClearProvides(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
+	slog.Debug(fmt.Sprintf("Processing clear provides override for pkgbase %s", pkgbase))
 
 	appendText := `unset provides`
 
@@ -256,6 +290,38 @@ unset _new_cksums
 	return appendPkgbuild(pkgbase, appendText)
 }
 
+func processRenameFunction(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+	slog.Debug(fmt.Sprintf("Processing rename function override for pkgbase %s", pkgbase))
+
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	pkgbuildBytes, err := os.ReadFile(pkgbuildPath)
+
+	if err != nil {
+		return err
+	}
+
+	pkgbuild := string(pkgbuildBytes)
+
+	namechangemap := map[string]string{}
+
+	for _, item := range overrides {
+		namechangemap[item.From] = item.To
+	}
+
+	if result, err := replaceFunctionNames(pkgbuild, namechangemap); err != nil {
+		return err
+	} else {
+		pkgbuild = result
+	}
+
+	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing rename package override for pkgbase %s", pkgbase))
 
@@ -271,6 +337,7 @@ func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromT
 
 	var pkgnames []string
 	namechangemap := map[string]string{}
+	functypenames := []string{"package", "prepare", "build", "check"}
 
 	for _, srcinfo := range srcinfos {
 		found := false
@@ -279,7 +346,10 @@ func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromT
 			if override.From == srcinfo.Pkgname || (override.From == "" && srcinfo.Pkgname == pkgbase) {
 				if override.To != "" {
 					pkgnames = append(pkgnames, override.To)
-					namechangemap[srcinfo.Pkgname] = override.To
+
+					for _, functypename := range functypenames {
+						namechangemap[fmt.Sprintf("%s_%s", functypename, srcinfo.Pkgname)] = fmt.Sprintf("%s_%s", functypename, override.To)
+					}
 				}
 
 				found = true
@@ -308,10 +378,40 @@ func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromT
 		pkgbuild = result
 	}
 
-	if result, err := replaceFunctions(pkgbuild, namechangemap); err != nil {
+	if result, err := replaceFunctionNames(pkgbuild, namechangemap); err != nil {
 		return err
 	} else {
 		pkgbuild = result
+	}
+
+	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func processReplacePkgbuild(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+	slog.Debug(fmt.Sprintf("Processing replace pkgbuild override for pkgbase %s", pkgbase))
+
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	pkgbuildBytes, err := os.ReadFile(pkgbuildPath)
+
+	if err != nil {
+		return err
+	}
+
+	pkgbuild := string(pkgbuildBytes)
+
+	for _, item := range overrides {
+		re, err := regexp.Compile(item.From)
+
+		if err != nil {
+			return err
+		}
+
+		pkgbuild = re.ReplaceAllString(pkgbuild, item.To)
 	}
 
 	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
@@ -386,18 +486,18 @@ func replacePkgname(pkgbuild string, pkgnames []string) (string, error) {
 	return strings.Join(newlines, "\n"), nil
 }
 
-func replaceFunctions(pkgbuild string, namechangemap map[string]string) (string, error) {
-	re, err := regexp.Compile(`(?m)^(?P<func>package|prepare|build|check)_(?P<pkgname>[a-zA-Z0-9@._+-]+)(?P<end>\s*\()`)
+func replaceFunctionNames(pkgbuild string, namechangemap map[string]string) (string, error) {
+	re, err := regexp.Compile(`(?m)^(?P<name>[a-zA-Z0-9@._+-]+)(?P<end>\s*\()`)
 
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 
 	return re.ReplaceAllStringFunc(pkgbuild, func(match string) string {
 		parts := misc.RegexGetMatchByGroup(re, match)
 
-		if newname, hasKey := namechangemap[parts["pkgname"]]; hasKey {
-			return fmt.Sprintf("%s_%s%s", parts["func"], newname, parts["end"])
+		if newname, hasKey := namechangemap[parts["name"]]; hasKey {
+			return fmt.Sprintf("%s%s", newname, parts["end"])
 		}
 
 		return match

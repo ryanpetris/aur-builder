@@ -13,13 +13,16 @@ type PackageConfig struct {
 }
 
 type PackageConfigOverrides struct {
+	AppendPkgbuild       string                        `yaml:"appendPkgbuild,omitempty"`
 	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
 	ClearConflicts       bool                          `yaml:"clearConflicts,omitempty"`
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
 	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
 	ClearProvides        bool                          `yaml:"clearProvides,omitempty"`
 	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
+	RenameFunction       []PackageConfigOverrideFromTo `yaml:"renameFunction,omitempty"`
 	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
+	ReplacePkgbuild      []PackageConfigOverrideFromTo `yaml:"replacePkgbuild,omitempty"`
 }
 
 type PackageConfigOverrideFromTo struct {
