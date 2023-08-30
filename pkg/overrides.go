@@ -103,6 +103,14 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 
 	// Then run functions that don't touch the PKGBUILD at all
 
+	if pconfig.Overrides.DeleteFile != nil {
+		err := processDeleteFile(pkgbase, pconfig.Overrides.DeleteFile)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	if pconfig.Overrides.RenameFile != nil {
 		err := processRenameFile(pkgbase, pconfig.Overrides.RenameFile)
 
@@ -300,6 +308,39 @@ unset _new_cksums
 	return appendPkgbuild(pkgbase, appendText)
 }
 
+func processDeleteFile(pkgbase string, files []string) error {
+	slog.Debug(fmt.Sprintf("Processing delete file override for pkgbase %s", pkgbase))
+
+	mergedPath := config.GetMergedPath(pkgbase)
+
+	for _, item := range files {
+		filePath := path.Join(mergedPath, item)
+
+		if err := os.RemoveAll(filePath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+	slog.Debug(fmt.Sprintf("Processing move file override for pkgbase %s", pkgbase))
+
+	mergedPath := config.GetMergedPath(pkgbase)
+
+	for _, item := range overrides {
+		fromPath := path.Join(mergedPath, item.From)
+		toPath := path.Join(mergedPath, item.To)
+
+		if err := os.Rename(fromPath, toPath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func processRenameFunction(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing rename function override for pkgbase %s", pkgbase))
 
@@ -426,23 +467,6 @@ func processReplacePkgbuild(pkgbase string, overrides []PackageConfigOverrideFro
 
 	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
-	slog.Debug(fmt.Sprintf("Processing move file override for pkgbase %s", pkgbase))
-
-	mergedPath := config.GetMergedPath(pkgbase)
-
-	for _, item := range overrides {
-		fromPath := path.Join(mergedPath, item.From)
-		toPath := path.Join(mergedPath, item.To)
-
-		if err := os.Rename(fromPath, toPath); err != nil {
-			return err
-		}
 	}
 
 	return nil
