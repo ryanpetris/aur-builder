@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/ryanpetris/aur-builder/config"
@@ -10,7 +11,10 @@ import (
 
 func CloneUpstream(pkgbase string, url string, tag string) error {
 	upstreamPath := config.GetUpstreamPath(pkgbase)
-	gitPath := path.Join(upstreamPath, ".git")
+	removePaths := []string{
+		".git",
+		".gitignore",
+	}
 
 	if _, err := os.Stat(upstreamPath); err != nil {
 		if err = os.RemoveAll(upstreamPath); err != nil {
@@ -34,8 +38,16 @@ func CloneUpstream(pkgbase string, url string, tag string) error {
 		return err
 	}
 
-	if err = os.RemoveAll(gitPath); err != nil {
-		return err
+	for _, item := range removePaths {
+		removePath := path.Join(upstreamPath, item)
+
+		if _, err := os.Stat(removePath); errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+
+		if err = os.RemoveAll(removePath); err != nil {
+			return err
+		}
 	}
 
 	return nil
