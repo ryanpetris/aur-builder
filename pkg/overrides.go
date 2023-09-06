@@ -88,6 +88,14 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
+	if pconfig.Overrides.ClearReplaces {
+		err := processClearReplaces(pkgbase)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	if pconfig.Overrides.ClearSignatures {
 		err := processClearSignatures(pkgbase)
 
@@ -203,6 +211,14 @@ func processClearProvides(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear provides override for pkgbase %s", pkgbase))
 
 	appendText := `unset provides`
+
+	return appendPkgbuild(pkgbase, appendText)
+}
+
+func processClearReplaces(pkgbase string) error {
+	slog.Debug(fmt.Sprintf("Processing clear replaces override for pkgbase %s", pkgbase))
+
+	appendText := `unset replaces`
 
 	return appendPkgbuild(pkgbase, appendText)
 }

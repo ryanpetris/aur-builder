@@ -19,6 +19,7 @@ type PackageConfigOverrides struct {
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
 	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
 	ClearProvides        bool                          `yaml:"clearProvides,omitempty"`
+	ClearReplaces        bool                          `yaml:"clearReplaces,omitempty"`
 	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
 	DeleteFile           []string                      `yaml:"deleteFile,omitempty"`
 	RenameFile           []PackageConfigOverrideFromTo `yaml:"renameFile,omitempty"`
