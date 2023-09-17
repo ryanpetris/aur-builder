@@ -96,8 +96,8 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
-	if pconfig.Overrides.ClearSignatures {
-		err := processClearSignatures(pkgbase)
+	if pconfig.Overrides.ClearSignatures || pconfig.Overrides.RemoveSource != nil {
+		err := processRemoveSources(pkgbase, pconfig.Overrides)
 
 		if err != nil {
 			return err
@@ -223,111 +223,39 @@ func processClearReplaces(pkgbase string) error {
 	return appendPkgbuild(pkgbase, appendText)
 }
 
-func processClearSignatures(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear signatures override for pkgbase %s", pkgbase))
+func processRemoveSources(pkgbase string, overrides PackageConfigOverrides) error {
+	slog.Debug(fmt.Sprintf("Processing remove sources override for pkgbase %s", pkgbase))
 
-	type arrayDef struct {
-		Name     string
-		OrigName string
-		Arch     string
-		Items    map[string]string
+	if overrides.ClearSignatures {
+		if err := appendPkgbuild(pkgbase, "unset validpgpkeys"); err != nil {
+			return err
+		}
 	}
 
-	mergedPath := config.GetMergedPath(pkgbase)
-	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
-	var stdoutBuf = bytes.Buffer{}
+	return removeSource(pkgbase, func(val string) (bool, error) {
+		parts := strings.SplitN(val, "::", 2)
+		filename := path.Base(parts[0])
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf(`source "%s"; declare -p | grep -E '^declare -a (source|[a-z0-9]+sums)(_[a-z0-9_]+)?='`, pkgbuildPath))
-	cmd.Stdout = &stdoutBuf
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	re, err := regexp.Compile(`\[(?P<index>[0-9]+)]="(?P<value>(?:[^\\"]|\\"|\\[^"])*?)"`)
-
-	if err != nil {
-		return err
-	}
-
-	var parsedArrays []arrayDef
-
-	for _, line := range strings.Split(stdoutBuf.String(), "\n") {
-		if line == "" {
-			continue
-		}
-
-		declareParts := strings.SplitN(line, " ", 3)
-		varParts := strings.SplitN(declareParts[2], "=", 2)
-		nameParts := strings.SplitN(varParts[0], "_", 2)
-
-		def := arrayDef{
-			Name:     nameParts[0],
-			OrigName: varParts[0],
-			Items:    map[string]string{},
-		}
-
-		if len(nameParts) > 1 {
-			def.Arch = nameParts[1]
-		}
-
-		matches := re.FindAllStringSubmatch(varParts[1], -1)
-
-		for _, match := range matches {
-			matchMap := misc.RegexMapMatchByGroup(re, match)
-
-			def.Items[matchMap["index"]] = matchMap["value"]
-		}
-
-		parsedArrays = append(parsedArrays, def)
-	}
-
-	appendLines := []string{"unset validpgpkeys"}
-	var affectedArrays []string
-
-	for _, item := range parsedArrays {
-		if item.Name != "source" {
-			continue
-		}
-
-		for index, value := range item.Items {
-			if val, err := isSignature(value); err != nil {
-				return err
-			} else if !val {
-				continue
-			}
-
-			if !slices.Contains(affectedArrays, item.OrigName) {
-				affectedArrays = append(affectedArrays, item.OrigName)
-			}
-
-			appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", item.OrigName, index))
-
-			for _, sumItem := range parsedArrays {
-				if !strings.HasSuffix(sumItem.Name, "sums") {
-					continue
-				}
-
-				if sumItem.Arch != item.Arch {
-					continue
-				}
-
-				if !slices.Contains(affectedArrays, sumItem.OrigName) {
-					affectedArrays = append(affectedArrays, sumItem.OrigName)
-				}
-
-				appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", sumItem.OrigName, index))
+		if overrides.ClearSignatures {
+			if isSig, err := isSignature(filename); err != nil {
+				return false, err
+			} else if isSig {
+				return true, nil
 			}
 		}
-	}
 
-	for _, item := range affectedArrays {
-		appendLines = append(appendLines, fmt.Sprintf(`mapfile -t %s < <(IFS=$'\n'; echo "${%s[*]}")`, item, item))
-	}
+		if overrides.RemoveSource != nil {
+			for _, source := range overrides.RemoveSource {
+				if matched, err := regexp.MatchString(source, filename); err != nil {
+					return false, err
+				} else if matched {
+					return true, nil
+				}
+			}
+		}
 
-	appendText := strings.Join(appendLines, "\n")
-
-	return appendPkgbuild(pkgbase, appendText)
+		return false, nil
+	})
 }
 
 func processDeleteFile(pkgbase string, files []string) error {
@@ -592,4 +520,111 @@ func isSignature(value string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func removeSource(pkgbase string, matcher func(string) (bool, error)) error {
+	slog.Debug(fmt.Sprintf("Removing source files for pkgbase %s", pkgbase))
+
+	type arrayDef struct {
+		Name     string
+		OrigName string
+		Arch     string
+		Items    map[string]string
+	}
+
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	var stdoutBuf = bytes.Buffer{}
+
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(`source "%s"; declare -p | grep -E '^declare -a (source|[a-z0-9]+sums)(_[a-z0-9_]+)?='`, pkgbuildPath))
+	cmd.Stdout = &stdoutBuf
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	re, err := regexp.Compile(`\[(?P<index>[0-9]+)]="(?P<value>(?:[^\\"]|\\"|\\[^"])*?)"`)
+
+	if err != nil {
+		return err
+	}
+
+	var parsedArrays []arrayDef
+
+	for _, line := range strings.Split(stdoutBuf.String(), "\n") {
+		if line == "" {
+			continue
+		}
+
+		declareParts := strings.SplitN(line, " ", 3)
+		varParts := strings.SplitN(declareParts[2], "=", 2)
+		nameParts := strings.SplitN(varParts[0], "_", 2)
+
+		def := arrayDef{
+			Name:     nameParts[0],
+			OrigName: varParts[0],
+			Items:    map[string]string{},
+		}
+
+		if len(nameParts) > 1 {
+			def.Arch = nameParts[1]
+		}
+
+		matches := re.FindAllStringSubmatch(varParts[1], -1)
+
+		for _, match := range matches {
+			matchMap := misc.RegexMapMatchByGroup(re, match)
+
+			def.Items[matchMap["index"]] = matchMap["value"]
+		}
+
+		parsedArrays = append(parsedArrays, def)
+	}
+
+	var appendLines []string
+	var affectedArrays []string
+
+	for _, item := range parsedArrays {
+		if item.Name != "source" {
+			continue
+		}
+
+		for index, value := range item.Items {
+			if remove, err := matcher(value); err != nil {
+				return err
+			} else if !remove {
+				continue
+			}
+
+			if !slices.Contains(affectedArrays, item.OrigName) {
+				affectedArrays = append(affectedArrays, item.OrigName)
+			}
+
+			appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", item.OrigName, index))
+
+			for _, sumItem := range parsedArrays {
+				if !strings.HasSuffix(sumItem.Name, "sums") {
+					continue
+				}
+
+				if sumItem.Arch != item.Arch {
+					continue
+				}
+
+				if !slices.Contains(affectedArrays, sumItem.OrigName) {
+					affectedArrays = append(affectedArrays, sumItem.OrigName)
+				}
+
+				appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", sumItem.OrigName, index))
+			}
+		}
+	}
+
+	for _, item := range affectedArrays {
+		appendLines = append(appendLines, fmt.Sprintf(`mapfile -t %s < <(IFS=$'\n'; echo "${%s[*]}")`, item, item))
+	}
+
+	appendText := strings.Join(appendLines, "\n")
+
+	return appendPkgbuild(pkgbase, appendText)
 }

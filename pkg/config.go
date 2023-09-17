@@ -22,6 +22,7 @@ type PackageConfigOverrides struct {
 	ClearReplaces        bool                          `yaml:"clearReplaces,omitempty"`
 	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
 	DeleteFile           []string                      `yaml:"deleteFile,omitempty"`
+	RemoveSource         []string                      `yaml:"removeSource,omitempty"`
 	RenameFile           []PackageConfigOverrideFromTo `yaml:"renameFile,omitempty"`
 	RenameFunction       []PackageConfigOverrideFromTo `yaml:"renameFunction,omitempty"`
 	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
