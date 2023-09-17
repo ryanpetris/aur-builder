@@ -36,17 +36,7 @@ func NeedsBuildMain(args []string) {
 
 		for _, pkginfo := range pkginfos {
 			if tracker.RepositoryVersion == "" {
-				pkgver, err := pacman.GetPackageVersion(pkginfo.Pkgname)
-
-				if err != nil {
-					continue
-				}
-
-				if pkgver == "" {
-					continue
-				}
-
-				tracker.RepositoryVersion = pkgver
+				tracker.RepositoryVersion, _ = pacman.GetPackageVersion(pkginfo.Pkgname)
 			}
 
 			tracker.Packages = append(tracker.Packages, misc.PackageInfo{
@@ -92,6 +82,8 @@ func NeedsBuildMain(args []string) {
 				break
 			}
 		}
+
+		trackers[pkgbase] = tracker
 	}
 
 	var updatePackages []string
