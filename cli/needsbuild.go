@@ -92,6 +92,20 @@ func NeedsBuildMain(args []string) {
 		}
 	}
 
+	for _, pkgbase := range updatePackages {
+		pconfig, err := pkg.LoadConfig(pkgbase)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if pconfig.BuildFirst {
+			slog.Info(fmt.Sprintf("Package %s is marked Build First so skipping all others.", pkgbase))
+			updatePackages = []string{pkgbase}
+			break
+		}
+	}
+
 	cenv := cienv.FindCiEnv()
 	err = cenv.WriteBuildPackages(updatePackages)
 

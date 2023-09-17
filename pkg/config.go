@@ -8,8 +8,9 @@ import (
 )
 
 type PackageConfig struct {
-	Source    string                 `yaml:"source,omitempty"`
-	Overrides PackageConfigOverrides `yaml:"overrides,omitempty"`
+	Source     string                 `yaml:"source,omitempty"`
+	BuildFirst bool                   `yaml:"buildFirst,omitempty"`
+	Overrides  PackageConfigOverrides `yaml:"overrides,omitempty"`
 }
 
 type PackageConfigOverrides struct {
