@@ -5,6 +5,7 @@ import (
 	"github.com/ryanpetris/aur-builder/config"
 	"os"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -65,8 +66,10 @@ func (srcinfo *SrcinfoPkg) GetAllBuildDepends(arch ...string) []string {
 			continue
 		}
 
-		if !slices.Contains(result, item.Value) {
-			result = append(result, item.Value)
+		parts := regexp.MustCompile("[<>=]+").Split(item.Value, 2)
+
+		if !slices.Contains(result, parts[0]) {
+			result = append(result, parts[0])
 		}
 	}
 

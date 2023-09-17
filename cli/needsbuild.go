@@ -64,28 +64,6 @@ func NeedsBuildMain(args []string) {
 		trackers[pkgbase] = tracker
 	}
 
-	for pkgbase, tracker := range trackers {
-		if !tracker.NeedsUpdate {
-			continue
-		}
-
-		for _, pkgitem := range tracker.Packages {
-			for _, dep := range pkgitem.BuildDeps {
-				if otracker, hasKey := trackers[dep]; hasKey && otracker.NeedsUpdate && otracker.Pkgbase != pkgbase {
-					slog.Info(fmt.Sprintf("Skipping %s for this run due to dependencies.", pkgbase))
-					tracker.NeedsUpdate = false
-					break
-				}
-			}
-
-			if !tracker.NeedsUpdate {
-				break
-			}
-		}
-
-		trackers[pkgbase] = tracker
-	}
-
 	var updatePackages []string
 
 	for pkgbase, tracker := range trackers {
@@ -93,7 +71,25 @@ func NeedsBuildMain(args []string) {
 			continue
 		}
 
-		updatePackages = append(updatePackages, pkgbase)
+		skip := false
+
+		for _, pkgitem := range tracker.Packages {
+			for _, dep := range pkgitem.BuildDeps {
+				if otracker, hasKey := trackers[dep]; hasKey && otracker.NeedsUpdate && otracker.Pkgbase != pkgbase {
+					slog.Info(fmt.Sprintf("Skipping %s for this run due to dependencies.", pkgbase))
+					skip = true
+					break
+				}
+			}
+
+			if skip {
+				break
+			}
+		}
+
+		if !skip {
+			updatePackages = append(updatePackages, pkgbase)
+		}
 	}
 
 	cenv := cienv.FindCiEnv()
