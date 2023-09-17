@@ -291,28 +291,32 @@ func processClearSignatures(pkgbase string) error {
 		}
 
 		for index, value := range item.Items {
-			if strings.HasSuffix(value, ".sig") {
-				if !slices.Contains(affectedArrays, item.OrigName) {
-					affectedArrays = append(affectedArrays, item.OrigName)
+			if val, err := isSignature(value); err != nil {
+				return err
+			} else if !val {
+				continue
+			}
+
+			if !slices.Contains(affectedArrays, item.OrigName) {
+				affectedArrays = append(affectedArrays, item.OrigName)
+			}
+
+			appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", item.OrigName, index))
+
+			for _, sumItem := range parsedArrays {
+				if !strings.HasSuffix(sumItem.Name, "sums") {
+					continue
 				}
 
-				appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", item.OrigName, index))
-
-				for _, sumItem := range parsedArrays {
-					if !strings.HasSuffix(sumItem.Name, "sums") {
-						continue
-					}
-
-					if sumItem.Arch != item.Arch {
-						continue
-					}
-
-					if !slices.Contains(affectedArrays, sumItem.OrigName) {
-						affectedArrays = append(affectedArrays, sumItem.OrigName)
-					}
-
-					appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", sumItem.OrigName, index))
+				if sumItem.Arch != item.Arch {
+					continue
 				}
+
+				if !slices.Contains(affectedArrays, sumItem.OrigName) {
+					affectedArrays = append(affectedArrays, sumItem.OrigName)
+				}
+
+				appendLines = append(appendLines, fmt.Sprintf("unset %s[%s]", sumItem.OrigName, index))
 			}
 		}
 	}
@@ -571,4 +575,21 @@ func replaceFunctionNames(pkgbuild string, namechangemap map[string]string) (str
 
 		return match
 	}), nil
+}
+
+func isSignature(value string) (bool, error) {
+	parts := strings.SplitN(value, "::", 2)
+	sigExtensions := []string{
+		".sig",
+		".sign",
+		".asc",
+	}
+
+	for _, ext := range sigExtensions {
+		if strings.HasSuffix(parts[0], ext) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
