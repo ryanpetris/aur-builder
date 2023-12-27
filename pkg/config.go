@@ -16,16 +16,13 @@ type PackageConfig struct {
 type PackageConfigOverrides struct {
 	AppendPkgbuild       string                        `yaml:"appendPkgbuild,omitempty"`
 	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
-	ClearConflicts       bool                          `yaml:"clearConflicts,omitempty"`
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
 	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
-	ClearProvides        bool                          `yaml:"clearProvides,omitempty"`
-	ClearReplaces        bool                          `yaml:"clearReplaces,omitempty"`
 	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
 	DeleteFile           []string                      `yaml:"deleteFile,omitempty"`
+	ModifySection        []PackageConfigModifySection  `yaml:"modifySection,omitempty"`
 	RemoveSource         []string                      `yaml:"removeSource,omitempty"`
 	RenameFile           []PackageConfigOverrideFromTo `yaml:"renameFile,omitempty"`
-	RenameFunction       []PackageConfigOverrideFromTo `yaml:"renameFunction,omitempty"`
 	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
 	ReplacePkgbuild      []PackageConfigOverrideFromTo `yaml:"replacePkgbuild,omitempty"`
 }
@@ -33,6 +30,16 @@ type PackageConfigOverrides struct {
 type PackageConfigOverrideFromTo struct {
 	From string `yaml:"from,omitempty"`
 	To   string `yaml:"to,omitempty"`
+}
+
+type PackageConfigModifySection struct {
+	Section  string                        `yaml:"section,omitempty"`
+	Sections []string                      `yaml:"sections,omitempty"`
+	Package  string                        `yaml:"package,omitempty"`
+	Packages []string                      `yaml:"packages,omitempty"`
+	Append   string                        `yaml:"append,omitempty"`
+	Prepend  string                        `yaml:"prepend,omitempty"`
+	Replace  []PackageConfigOverrideFromTo `yaml:"replace,omitempty"`
 }
 
 func LoadConfig(pkgbase string) (*PackageConfig, error) {

@@ -50,18 +50,8 @@ func (pconfig *PackageConfig) Merge(pkgbase string) error {
 		}
 	}
 
-	if pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666); err != nil {
+	if err := formatPkgbuild(pkgbuildPath); err != nil {
 		return err
-	} else {
-		if _, err = pkgbuild.WriteString("\n"); err != nil {
-			_ = pkgbuild.Close()
-
-			return err
-		}
-
-		if err = pkgbuild.Close(); err != nil {
-			return err
-		}
 	}
 
 	if err := pconfig.ProcessOverrides(pkgbase); err != nil {
@@ -75,6 +65,10 @@ func (pconfig *PackageConfig) Merge(pkgbase string) error {
 		if err = cmd.Run(); err != nil {
 			return err
 		}
+	}
+
+	if err := formatPkgbuild(pkgbuildPath); err != nil {
+		return err
 	}
 
 	return nil

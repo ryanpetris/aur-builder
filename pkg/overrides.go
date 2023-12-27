@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/ryanpetris/aur-builder/config"
 	"github.com/ryanpetris/aur-builder/misc"
@@ -30,16 +31,16 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
-	if pconfig.Overrides.ReplacePkgbuild != nil {
-		err := processReplacePkgbuild(pkgbase, pconfig.Overrides.ReplacePkgbuild)
+	if pconfig.Overrides.ModifySection != nil {
+		err := processModifySection(pkgbase, pconfig.Overrides.ModifySection)
 
 		if err != nil {
 			return err
 		}
 	}
 
-	if pconfig.Overrides.RenameFunction != nil {
-		err := processRenameFunction(pkgbase, pconfig.Overrides.RenameFunction)
+	if pconfig.Overrides.ReplacePkgbuild != nil {
+		err := processReplacePkgbuild(pkgbase, pconfig.Overrides.ReplacePkgbuild)
 
 		if err != nil {
 			return err
@@ -56,14 +57,6 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
-	if pconfig.Overrides.ClearConflicts {
-		err := processClearConflicts(pkgbase)
-
-		if err != nil {
-			return err
-		}
-	}
-
 	if pconfig.Overrides.ClearDependsVersions {
 		err := processClearDependsVersions(pkgbase)
 
@@ -74,22 +67,6 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 
 	if pconfig.Overrides.ClearPkgverFunc {
 		err := processClearPkgverFunc(pkgbase)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if pconfig.Overrides.ClearProvides {
-		err := processClearProvides(pkgbase)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if pconfig.Overrides.ClearReplaces {
-		err := processClearReplaces(pkgbase)
 
 		if err != nil {
 			return err
@@ -183,14 +160,6 @@ fi
 	return nil
 }
 
-func processClearConflicts(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear conflicts override for pkgbase %s", pkgbase))
-
-	appendText := `unset conflicts`
-
-	return appendPkgbuild(pkgbase, appendText)
-}
-
 func processClearDependsVersions(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear depends versions override for pkgbase %s", pkgbase))
 
@@ -203,22 +172,6 @@ func processClearPkgverFunc(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
 
 	appendText := `unset -f pkgver`
-
-	return appendPkgbuild(pkgbase, appendText)
-}
-
-func processClearProvides(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear provides override for pkgbase %s", pkgbase))
-
-	appendText := `unset provides`
-
-	return appendPkgbuild(pkgbase, appendText)
-}
-
-func processClearReplaces(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear replaces override for pkgbase %s", pkgbase))
-
-	appendText := `unset replaces`
 
 	return appendPkgbuild(pkgbase, appendText)
 }
@@ -274,6 +227,153 @@ func processDeleteFile(pkgbase string, files []string) error {
 	return nil
 }
 
+func processModifySection(pkgbase string, overrides []PackageConfigModifySection) error {
+	slog.Debug(fmt.Sprintf("Processing modify section overrides for pkgbase %s", pkgbase))
+
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	pkgbuildBytes, err := os.ReadFile(pkgbuildPath)
+
+	if err != nil {
+		return err
+	}
+
+	pkgbuildLines := strings.Split(string(pkgbuildBytes), "\n")
+
+	for _, override := range overrides {
+		sections := override.Sections
+		packages := override.Packages
+
+		if override.Section != "" {
+			sections = append(sections, override.Section)
+		}
+
+		if override.Package != "" {
+			packages = append(packages, override.Package)
+		}
+
+		if len(packages) == 0 {
+			packages = append(packages, "")
+		}
+
+		for _, sectionName := range sections {
+			for _, packageName := range packages {
+				if packageName != "" {
+					sectionName = fmt.Sprintf("%s_%s", sectionName, packageName)
+				}
+
+				functionStartLine := fmt.Sprintf("%s() {", sectionName)
+				variableStartLine := fmt.Sprintf("%s=(", sectionName)
+
+				beforeLines := []string{}
+				afterLines := []string{}
+				sectionLines := []string{}
+
+				foundStart := false
+				foundEnd := false
+				isVariable := false
+
+				for _, line := range pkgbuildLines {
+					if !foundStart {
+						if line == functionStartLine {
+							foundStart = true
+						} else if strings.HasPrefix(line, variableStartLine) {
+							isVariable = true
+							foundStart = true
+							foundEnd = true
+
+							sectionLines = append(sectionLines, line)
+							continue
+						}
+
+						beforeLines = append(beforeLines, line)
+						continue
+					}
+
+					if !foundEnd {
+						if line == "}" {
+							foundEnd = true
+						} else {
+							sectionLines = append(sectionLines, line)
+							continue
+						}
+					}
+
+					afterLines = append(afterLines, line)
+				}
+
+				if !foundStart {
+					return errors.New(fmt.Sprintf("Could not find start of %s section.", sectionName))
+				}
+
+				if !foundEnd {
+					return errors.New(fmt.Sprintf("Could not find end of %s section.", sectionName))
+				}
+
+				if !isVariable {
+					if len(override.Replace) > 0 {
+						sectionStr := strings.Join(sectionLines, "\n")
+
+						for _, item := range override.Replace {
+							re, err := regexp.Compile(item.From)
+
+							if err != nil {
+								return err
+							}
+
+							sectionStr = re.ReplaceAllString(sectionStr, item.To)
+						}
+
+						sectionLines = strings.Split(sectionStr, "\n")
+					}
+
+					sectionLines = append(strings.Split(override.Prepend, "\n"), sectionLines...)
+					pkgbuildLines = append(sectionLines, strings.Split(override.Append, "\n")...)
+				} else {
+					_, sectionItems, err := arrayLineToItems(sectionLines[0])
+
+					if err != nil {
+						return err
+					}
+
+					if len(override.Replace) > 0 {
+						for _, item := range override.Replace {
+							re, err := regexp.Compile(item.From)
+
+							if err != nil {
+								return err
+							}
+
+							for sItemIndex, sItem := range sectionItems {
+								sectionItems[sItemIndex] = re.ReplaceAllString(sItem, item.To)
+							}
+						}
+					}
+
+					sectionItems = append(strings.Split(override.Prepend, "\n"), sectionItems...)
+					sectionItems = append(sectionItems, strings.Split(override.Append, "\n")...)
+					joinedSectionItems := strings.Join(sectionItems, " ")
+
+					if len(strings.Trim(joinedSectionItems, " ")) > 0 {
+						sectionLines[0] = fmt.Sprintf("%s%s)", variableStartLine, joinedSectionItems)
+					} else {
+						sectionLines = []string{}
+					}
+				}
+
+				pkgbuildLines = append(beforeLines, sectionLines...)
+				pkgbuildLines = append(pkgbuildLines, afterLines...)
+			}
+		}
+	}
+
+	if err := os.WriteFile(pkgbuildPath, []byte(strings.Join(pkgbuildLines, "\n")), 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing move file override for pkgbase %s", pkgbase))
 
@@ -286,38 +386,6 @@ func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) 
 		if err := os.Rename(fromPath, toPath); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func processRenameFunction(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
-	slog.Debug(fmt.Sprintf("Processing rename function override for pkgbase %s", pkgbase))
-
-	mergedPath := config.GetMergedPath(pkgbase)
-	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
-	pkgbuildBytes, err := os.ReadFile(pkgbuildPath)
-
-	if err != nil {
-		return err
-	}
-
-	pkgbuild := string(pkgbuildBytes)
-
-	namechangemap := map[string]string{}
-
-	for _, item := range overrides {
-		namechangemap[item.From] = item.To
-	}
-
-	if result, err := replaceFunctionNames(pkgbuild, namechangemap); err != nil {
-		return err
-	} else {
-		pkgbuild = result
-	}
-
-	if err := os.WriteFile(pkgbuildPath, []byte(pkgbuild), 0666); err != nil {
-		return err
 	}
 
 	return nil
@@ -627,4 +695,25 @@ func removeSource(pkgbase string, matcher func(string) (bool, error)) error {
 	appendText := strings.Join(appendLines, "\n")
 
 	return appendPkgbuild(pkgbase, appendText)
+}
+
+func arrayLineToItems(line string) (string, []string, error) {
+	parts := strings.SplitN(line, "=", 2)
+
+	if len(parts) != 2 {
+		return "", nil, errors.New("Invalid variable line.")
+	}
+
+	sectionName := parts[0]
+	varsStr := strings.TrimPrefix(strings.TrimSuffix(parts[1], ")"), "(")
+
+	re, err := regexp.Compile(`"[^"]+"|'[^']+'|[^ ]+`)
+
+	if err != nil {
+		return "", nil, err
+	}
+
+	results := re.FindAllString(varsStr, -1)
+
+	return sectionName, results, nil
 }
