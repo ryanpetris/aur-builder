@@ -14,7 +14,6 @@ type PackageConfig struct {
 }
 
 type PackageConfigOverrides struct {
-	AppendPkgbuild       string                        `yaml:"appendPkgbuild,omitempty"`
 	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
 	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
@@ -24,7 +23,6 @@ type PackageConfigOverrides struct {
 	RemoveSource         []string                      `yaml:"removeSource,omitempty"`
 	RenameFile           []PackageConfigOverrideFromTo `yaml:"renameFile,omitempty"`
 	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
-	ReplacePkgbuild      []PackageConfigOverrideFromTo `yaml:"replacePkgbuild,omitempty"`
 }
 
 type PackageConfigOverrideFromTo struct {
