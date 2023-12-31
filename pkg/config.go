@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"errors"
 	"github.com/ryanpetris/aur-builder/config"
 	"gopkg.in/yaml.v3"
@@ -52,6 +53,21 @@ func LoadConfig(pkgbase string) (*PackageConfig, error) {
 	return packageConfig, err
 }
 
+func ConfigExists(pkgbase string) (bool, error) {
+	configPath := config.GetConfigPath(pkgbase)
+	_, err := os.Stat(configPath)
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (pconfig *PackageConfig) Load(pkgbase string) error {
 	configPath := config.GetConfigPath(pkgbase)
 	_, err := os.Stat(configPath)
@@ -75,11 +91,15 @@ func (pconfig *PackageConfig) Load(pkgbase string) error {
 
 func (pconfig *PackageConfig) Write(pkgbase string) error {
 	configPath := config.GetConfigPath(pkgbase)
-	data, err := yaml.Marshal(pconfig)
+	buffer := bytes.Buffer{}
+	encoder := yaml.NewEncoder(&buffer)
+
+	encoder.SetIndent(2)
+	err := encoder.Encode(pconfig)
 
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(configPath, data, 0666)
+	return os.WriteFile(configPath, buffer.Bytes(), 0666)
 }

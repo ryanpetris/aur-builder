@@ -45,6 +45,9 @@ func main() {
 	case "update":
 		cli.UpdateMain(args)
 
+	case "formatconfig":
+		cli.FormatConfigMain(args)
+
 	default:
 		fmt.Println("invalid command")
 		os.Exit(1)
