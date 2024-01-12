@@ -12,6 +12,7 @@ type PackageConfig struct {
 	Source     string                 `yaml:"source,omitempty"`
 	BuildFirst bool                   `yaml:"buildFirst,omitempty"`
 	Overrides  PackageConfigOverrides `yaml:"overrides,omitempty"`
+	Ignore     bool                   `yaml:"ignore,omitempty"`
 }
 
 type PackageConfigOverrides struct {

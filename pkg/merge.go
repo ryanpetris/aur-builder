@@ -18,6 +18,7 @@ func (pconfig *PackageConfig) Merge(pkgbase string) error {
 	scriptsPath := config.GetScriptsPath(pkgbase)
 	upstreamPath := config.GetUpstreamPath(pkgbase)
 	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	onprepareScriptPath := path.Join(scriptsPath, "onprepare.sh")
 	onmergeScriptPath := path.Join(scriptsPath, "onmerge.sh")
 
 	if _, err := os.Stat(basePath); err != nil {
@@ -32,6 +33,15 @@ func (pconfig *PackageConfig) Merge(pkgbase string) error {
 
 	if err := os.Mkdir(mergedPath, 0777); err != nil {
 		return err
+	}
+
+	if _, err := os.Stat(onprepareScriptPath); err == nil {
+		cmd := exec.Command(onprepareScriptPath)
+		cmd.Dir = mergedPath
+
+		if err = cmd.Run(); err != nil {
+			return err
+		}
 	}
 
 	if _, err := os.Stat(upstreamPath); err == nil {

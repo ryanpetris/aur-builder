@@ -33,7 +33,11 @@ func GetPackages() ([]string, error) {
 			continue
 		}
 
-		packages = append(packages, entry.Name())
+		pkgconf, _ := LoadConfig(entry.Name())
+
+		if pkgconf == nil || !pkgconf.Ignore {
+			packages = append(packages, entry.Name())
+		}
 	}
 
 	return packages, nil
