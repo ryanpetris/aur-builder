@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/ryanpetris/aur-builder/arch"
 	"github.com/ryanpetris/aur-builder/cienv"
 	"github.com/ryanpetris/aur-builder/misc"
 	"github.com/ryanpetris/aur-builder/pacman"
@@ -36,7 +37,7 @@ func NeedsBuildMain(args []string) {
 
 		for _, pkginfo := range pkginfos {
 			if tracker.RepositoryVersion == "" {
-				tracker.RepositoryVersion, _ = pacman.GetPackageVersion(pkginfo.Pkgname)
+				tracker.RepositoryVersion, _ = arch.GetPackageVersion(pkginfo.Pkgname)
 			}
 
 			tracker.Packages = append(tracker.Packages, misc.PackageInfo{

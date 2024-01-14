@@ -1,200 +1,70 @@
 package arch
 
 import (
-	"bytes"
+	"database/sql"
 	"fmt"
-	"os/exec"
-	"slices"
-	"strconv"
+	"github.com/ryanpetris/aur-builder/pacdb"
+	"log/slog"
 	"strings"
 )
 
 type Package struct {
-	Pkgbase string
-	Pkgname string
-	Epoch   int
-	Pkgver  string
-	Pkgrel  int
-}
-
-func (pkg *Package) Load(packagelines []string) error {
-	var section string
-
-	for _, line := range packagelines {
-		if line == "" {
-			continue
-		}
-
-		if strings.HasPrefix(line, "%") {
-			section = line
-			continue
-		}
-
-		switch section {
-		case "%BASE%":
-			pkg.Pkgbase = line
-		case "%NAME%":
-			pkg.Pkgname = line
-		case "%VERSION%":
-			version := line
-
-			if parts := strings.SplitN(line, ":", 2); len(parts) > 1 {
-				pkg.Epoch, _ = strconv.Atoi(parts[0])
-				version = parts[1]
-			}
-
-			parts := strings.SplitN(version, "-", 2)
-
-			pkg.Pkgver = parts[0]
-			pkg.Pkgrel, _ = strconv.Atoi(parts[1])
-		}
-	}
-
-	return nil
-}
-
-func (pkg *Package) GetFullVersion() string {
-	if pkg.Epoch > 0 {
-		return fmt.Sprintf("%d:%s-%d", pkg.Epoch, pkg.Pkgver, pkg.Pkgrel)
-	}
-
-	return fmt.Sprintf("%s-%d", pkg.Pkgver, pkg.Pkgrel)
+	Pkgbase string `pacdb:"base"`
+	Pkgname string `pacdb:"package"`
+	Version string `pacdb:"version"`
 }
 
 func PackageExists(pkgbase string) (bool, error) {
-	cmdText := `
-(   tar -xvz -f /var/lib/pacman/sync/core.db  --wildcards '*/desc' --to-stdout 2>/dev/null \
- && tar -xvz -f /var/lib/pacman/sync/extra.db --wildcards '*/desc' --to-stdout 2>/dev/null) \
-| grep -A 1 --no-group-separator -E '^%BASE%$' \
-| grep -v '^%BASE%$' \
-| sort \
-| uniq
-`
-	var stdoutBuf = bytes.Buffer{}
+	query := "SELECT COUNT(*) FROM packages WHERE base = :base"
+	params := []any{
+		sql.Named("base", pkgbase),
+	}
 
-	cmd := exec.Command("bash", "-c", cmdText)
-	cmd.Stdout = &stdoutBuf
+	var count int
 
-	if err := cmd.Run(); err != nil {
+	if err := pacdb.QueryRow(query, params, &count); err != nil {
 		return false, err
 	}
 
-	packages := strings.Split(stdoutBuf.String(), "\n")
-
-	for _, pkg := range packages {
-		if pkg == pkgbase {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return count > 0, nil
 }
 
-func GetPackages(pkgname []string) ([]Package, error) {
-	cmdText := `
-   tar -xvz -f /var/lib/pacman/sync/core.db  --wildcards '*/desc' --to-stdout 2>/dev/null \
-&& tar -xvz -f /var/lib/pacman/sync/extra.db --wildcards '*/desc' --to-stdout 2>/dev/null
-`
-	var stdoutBuf = bytes.Buffer{}
-
-	cmd := exec.Command("bash", "-c", cmdText)
-	cmd.Stdout = &stdoutBuf
-
-	if err := cmd.Run(); err != nil {
-		return nil, err
+func GetPackages(pkgnames []string) ([]Package, error) {
+	if len(pkgnames) == 0 {
+		return nil, nil
 	}
 
-	lines := strings.Split(stdoutBuf.String(), "\n")
+	var paramNames []string
+	var params []any
 
-	nextLineIsPkgname := false
-	skipCurrent := true
-	var current []string
-	var packages []Package
-
-	processCurrent := func() error {
-		if len(current) > 0 && !skipCurrent {
-			newPackage := Package{}
-
-			if err := newPackage.Load(current); err != nil {
-				return err
-			}
-
-			packages = append(packages, newPackage)
-		}
-
-		current = nil
-		nextLineIsPkgname = false
-		skipCurrent = true
-
-		return nil
+	for i, pkgname := range pkgnames {
+		paramName := fmt.Sprintf("package%d", i)
+		paramNames = append(paramNames, fmt.Sprintf(":%s", paramName))
+		params = append(params, sql.Named(paramName, pkgname))
 	}
 
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
+	query := fmt.Sprintf("SELECT base, package, version FROM packages WHERE db IN ('core', 'extra') AND package IN (%s)", strings.Join(paramNames, ", "))
 
-		if line == "%FILENAME%" {
-			if err := processCurrent(); err != nil {
-				return nil, err
-			}
-		}
-
-		if nextLineIsPkgname {
-			nextLineIsPkgname = false
-
-			if slices.Contains(pkgname, line) {
-				skipCurrent = false
-			}
-		}
-
-		if line == "%NAME%" {
-			nextLineIsPkgname = true
-		}
-
-		current = append(current, line)
-	}
-
-	if err := processCurrent(); err != nil {
-		return nil, err
-	}
-
-	return packages, nil
+	return pacdb.QueryStruct[Package](query, params)
 }
 
-func GetPackageVersion(pkgbase string) (string, error) {
-	cmdText := `
-   tar -xvz -f /var/lib/pacman/sync/core.db --wildcards '*/desc' --to-stdout 2>/dev/null \
-&& tar -xvz -f /var/lib/pacman/sync/extra.db --wildcards '*/desc' --to-stdout 2>/dev/null
-`
-	var stdoutBuf = bytes.Buffer{}
+func GetPackageVersion(pkgname string) (string, error) {
+	slog.Debug(fmt.Sprintf("Looking up version for package %s", pkgname))
 
-	cmd := exec.Command("bash", "-c", cmdText)
-	cmd.Stdout = &stdoutBuf
+	query := "SELECT version FROM packages WHERE package = :package"
+	params := []any{
+		sql.Named("package", pkgname),
+	}
 
-	if err := cmd.Run(); err != nil {
+	var version string
+
+	if err := pacdb.QueryRow(query, params, &version); err != nil {
 		return "", err
+	} else if version != "" {
+		return version, nil
 	}
 
-	lines := strings.Split(stdoutBuf.String(), "\n")
-	var section string
-	var foundPackage bool
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		if strings.HasPrefix(line, "%") {
-			section = line
-		}
-
-		if section == "%BASE%" && line == pkgbase {
-			foundPackage = true
-		} else if section == "%VERSION%" && foundPackage {
-			return line, nil
-		}
-	}
+	slog.Debug(fmt.Sprintf("Version not found in output for package %s", pkgname))
 
 	return "", nil
 }

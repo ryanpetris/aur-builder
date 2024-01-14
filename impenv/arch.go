@@ -21,7 +21,7 @@ func (ienv ArchImportEnv) GetPackageInfo(pkgname []string) ([]misc.PackageInfo, 
 		result = append(result, misc.PackageInfo{
 			Pkgbase:     item.Pkgbase,
 			Pkgname:     item.Pkgname,
-			FullVersion: item.GetFullVersion(),
+			FullVersion: item.Version,
 		})
 	}
 
