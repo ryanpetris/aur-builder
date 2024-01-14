@@ -2,6 +2,9 @@
 
 AUR Builder is a personal repository builder, allowing synchronization and overrides of packages from the AUR, from the official Arch repositories, or from packages local to your repository. This is not a traditional AUR helper in the sense that it will automatically download, compile, and install a package from the AUR, but helps manage your own personal repository.
 
+> [!CAUTION]
+> -git, -hg, and other source packages are currently not supported. Only packages that are pinned to a specific version are supported.
+
 ## FAQ
 
 ### What does this tool do?
@@ -69,7 +72,8 @@ aur-builder import --source aur --package yay # imports the yay package from the
 aur-builder import --source arch --package tailscale # imports the yay package from the official arch repository
 ```
 
-Note that the package name is really the `pkgbase`, thus you should use the base package name for any packages that contain multiple packages.
+> [!NOTE]
+> The package name is really the `pkgbase`, thus you should use the base package name for any packages that contain multiple packages.
 
 ### Update
 
@@ -113,4 +117,119 @@ aur-builder needs-build
 
 ## Configuration
 
-TODO
+### Top-Level
+
+* `source` - The source of the package, either `aur` or `arch`. If the package is local to this repository, omit this option.
+* `buildFirst` - If specified and if [needs-build](#needs-build) determines this package needs to be built, then it will only return this package instead of any other package. Once built, the needs-build command will return other packages like normal.
+* `ignore` - Ignores this package, unless explicitly specified via the `--package` argument.
+* `overrides` - Overrides for this package. See the [overrides](#overrides) section.
+
+### Overrides
+
+* `bumpPkgrel` - If specified, will bump the pkgrel for the specified package versions by the amount specified. Multiple versions can be specified, and when the `update` command is run, obsolete versions will automatically be removed from the configuration. Example:
+
+```yaml
+bumpPkgrel:
+    1.0.0: 2
+```
+
+* `clearDependsVersions` - Sometimes packages are locked to specific versions unnecessarily; this will remove those depends versions. If you need something more granular, you can try the `modifySection` override below.
+* `clearPkgverFunc` - Sometimes packages have a pkgver function which can interfere with this tool's version detection. This will remove the pkgver function altogether so that the pkgver variable will be used.
+* `clearSignatures` - This removes all signature files from the sources list along with clearing the `validpgpkeys` section, allowing the package to be built without signatures. Generally packages also have `sums` for all the relevant files and importing signatures can be problematic. This is an alternative of just blindly importing signatures or disabling signatures via the command line in makepkg.
+* `deleteFile` - Array of files to delete. This occurs in the `merged` directory after all files are merged.
+* `modifySection` - Modifies a section of the pkgbuild file. The behavior depends on whether the section is an array or a function. For more information see the [Modify Section Overrides](#modify-section-overrides) configuration.
+* `removeSource` - Array of source files to remove from the PKGBUILD file. These are used as regular expressions and anything matching will be removed along with any matching sums.
+* `renameFile` - Array of files to rename in the `merged` directory.
+    * `from` - The old name of the file
+    * `to` - The new name of the file
+* `renamePackage` - Renames a package (*not* pkgbase). This will also rename any relevant functions such as `package`, `prepare`, `build`, and `check` functions specific to the named package.
+    * `from` - The old name of the package. Can be omitted if the PKGBUILD only contains a single package, which is most of them.
+    * `to` - The new name of the package.
+
+### Modify Section Overrides
+
+Each `modifySection` array item is processed in the order listed in the configuration, and therefore it's possible for these commands to step on each other. Please ensure that subsequent instructions are compatible with the changes made in previous instructions.
+
+* `section` or `sections` - The sections to modify. `sections` is an array while `section` is a single section. If multiple are specified, they must be of the same type, either an array or function.
+* `package` or `packages` - The packages this applies to, and is only applicable for functions. `packages` is an array while `package` is a single item. This will limit the matched functions to only those applicable for the specified packages, for instance `package_<pkgname>`. If not specified, only sections not tied to specific packages will be matched.
+* `append` - Append to the section. If an array, each line will be added as a separate array item to the beginning of the array. If a section, will be appended as lines to the function.
+* `prepend` - Prepend to the section. If an array, each line will be added as a separate array item to the end of the array. If a section, will be prepended as lines to the function.
+* `replace` - Replaces matched lines or array items with the result. Note that only the matched section will be replace, not the whole line. Therefore if you intend to replace or remove the whole line, ensure the regular expression covers the whole line.
+    * `from` - A regular expression for the line to find
+    * `to` - The replacement value.
+
+### Examples
+
+The following are examples from my personal repository.
+
+```yaml
+# bruno-bin package
+source: aur
+overrides:
+  modifySection:
+    # Removes the "bruno" and "bruno-*" entries from conflicts and provides.
+    - sections:
+        - conflicts
+        - provides
+      replace:
+        - from: ^["']?bruno(-.*)?["']?$
+  renamePackage:
+    # Renames the package to "bruno"
+    - to: bruno
+```
+
+```yaml
+# flightgear package
+source: aur
+overrides:
+  modifySection:
+    # Fix for MAKEFLAGS="-j$(nproc)" not working correctly.
+    # Appends this command to the bottom of the prepare function.
+    - section: prepare
+      append: |
+        echo 'add_dependencies(fgfs embeddedresources)' >> src/Main/CMakeLists.txt
+```
+
+```yaml
+# brave-bin package
+source: aur
+overrides:
+  modifySection:
+    # Add a line to the prepare function to replace "brave-bin" with "brave" in the "brave.sh" file
+    - section: prepare
+      prepend: |
+        sed -i -E 's|brave-bin|brave|g' "${srcdir}/brave.sh"
+    # Replace instances of "brave-bin" with "brave" in the package function.
+    - section: package
+      replace:
+        - from: brave-bin
+          to: brave
+    # Remove conflicts and provides entries that are using substitution along with "brave" and "brave-*" entries.
+    - sections:
+        - conflicts
+        - provides
+      replace:
+        - from: ^["']?\$.*["']?$
+        - from: ^["']?brave(-.*)?["']?$
+  renameFile:
+    # Renames "brave-bin.sh" file to "brave.sh"
+    - from: brave-bin.sh
+      to: brave.sh
+  renamePackage:
+    # Renames package to "brave"
+    - to: brave
+```
+
+```yaml
+# plib package
+source: aur
+overrides:
+  # Removes lines from the prepare function that are copying the config.guess and config.sub files.
+  modifySection:
+    - section: prepare
+      replace:
+        - from: (?m)^\s*cp [./]*config\.(guess|sub).*$
+  removeSource:
+    # Removes the config.guess and config.sub files from sources.
+    - ^config\.(guess|sub)$
+```
