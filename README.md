@@ -105,6 +105,8 @@ aur-builder prepare --package yay # prepares only the yay package
 
 The `needs-build` command checks if any packages need to be built. Note that versions are compared against your local sync DB, and therefore it should be up to date prior to running this. As this tool is intended to be run from a CI environment, this is generally not an issue.
 
+Example:
+
 ```shell
 aur-builder needs-build
 ```
