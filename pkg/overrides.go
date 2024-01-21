@@ -386,11 +386,7 @@ func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) 
 func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing rename package override for pkgbase %s", pkgbase))
 
-	if err := pacman.GenSrcInfo(pkgbase); err != nil {
-		return err
-	}
-
-	srcinfos, err := pacman.LoadSrcinfo(pkgbase)
+	packages, err := pacman.GetPkgbuildVars(pkgbase, "pkgname")
 
 	if err != nil {
 		return err
@@ -400,16 +396,16 @@ func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromT
 	namechangemap := map[string]string{}
 	functypenames := []string{"package", "prepare", "build", "check"}
 
-	for _, srcinfo := range srcinfos {
+	for _, pkgname := range packages {
 		found := false
 
 		for _, override := range overrides {
-			if override.From == srcinfo.Pkgname || (override.From == "" && srcinfo.Pkgname == pkgbase) {
+			if override.From == pkgname || (override.From == "" && pkgname == pkgbase) {
 				if override.To != "" {
 					pkgnames = append(pkgnames, override.To)
 
 					for _, functypename := range functypenames {
-						namechangemap[fmt.Sprintf("%s_%s", functypename, srcinfo.Pkgname)] = fmt.Sprintf("%s_%s", functypename, override.To)
+						namechangemap[fmt.Sprintf("%s_%s", functypename, pkgname)] = fmt.Sprintf("%s_%s", functypename, override.To)
 					}
 				}
 
@@ -419,7 +415,7 @@ func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromT
 		}
 
 		if !found {
-			pkgnames = append(pkgnames, srcinfo.Pkgname)
+			pkgnames = append(pkgnames, pkgname)
 		}
 	}
 
