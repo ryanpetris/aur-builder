@@ -150,6 +150,7 @@ bumpPkgrel:
 
 Each `modifySection` array item is processed in the order listed in the configuration, and therefore it's possible for these commands to step on each other. Please ensure that subsequent instructions are compatible with the changes made in previous instructions.
 
+* `type` - The type of section to modify. This is optional, however if there's multiple items that have the same name with different types (such as pkgver, which could be a variable AND a function), this will help choose one or the other. Additionally, if the section does not exist, this will allow creation of the section. Value values are "function", "array", or "variable".
 * `section` or `sections` - The sections to modify. `sections` is an array while `section` is a single section. If multiple are specified, they must be of the same type, either an array or function.
 * `package` or `packages` - The packages this applies to, and is only applicable for functions. `packages` is an array while `package` is a single item. This will limit the matched functions to only those applicable for the specified packages, for instance `package_<pkgname>`. If not specified, only sections not tied to specific packages will be matched.
 * `append` - Append to the section. If an array, each line will be added as a separate array item to the beginning of the array. If a section, will be appended as lines to the function.

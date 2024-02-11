@@ -33,6 +33,7 @@ type PackageConfigOverrideFromTo struct {
 }
 
 type PackageConfigModifySection struct {
+	Type     string                        `yaml:"type,omitempty"`
 	Section  string                        `yaml:"section,omitempty"`
 	Sections []string                      `yaml:"sections,omitempty"`
 	Package  string                        `yaml:"package,omitempty"`

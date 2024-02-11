@@ -253,21 +253,30 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 				}
 
 				functionStartLine := fmt.Sprintf("%s() {", sectionName)
-				variableStartLine := fmt.Sprintf("%s=(", sectionName)
-
-				isArray := false
+				arrayStartLine := fmt.Sprintf("%s=(", sectionName)
+				variableStartLine := fmt.Sprintf("%s=", sectionName)
 
 				if sectionName != "" {
-
 					foundStart := false
 					foundEnd := false
 
 					for _, line := range pkgbuildLines {
 						if !foundStart {
-							if line == functionStartLine {
+							if (override.Type == "" || override.Type == "function") && line == functionStartLine {
+								override.Type = "function"
+
 								foundStart = true
-							} else if strings.HasPrefix(line, variableStartLine) {
-								isArray = true
+							} else if (override.Type == "" || override.Type == "array") && strings.HasPrefix(line, arrayStartLine) {
+								override.Type = "array"
+
+								foundStart = true
+								foundEnd = true
+
+								sectionLines = append(sectionLines, line)
+								continue
+							} else if (override.Type == "" || override.Type == "variable") && strings.HasPrefix(line, variableStartLine) {
+								override.Type = "variable"
+
 								foundStart = true
 								foundEnd = true
 
@@ -291,18 +300,31 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 						afterLines = append(afterLines, line)
 					}
 
-					if !foundStart {
-						return errors.New(fmt.Sprintf("Could not find start of %s section.", sectionName))
-					}
+					if !foundStart || !foundEnd {
+						if override.Type == "" {
+							if override.Append == "" && override.Prepend == "" {
+								break
+							}
 
-					if !foundEnd {
-						return errors.New(fmt.Sprintf("Could not find end of %s section.", sectionName))
+							if !foundStart {
+								return errors.New(fmt.Sprintf("Could not find start of %s section. Please specify Type field to create section.", sectionName))
+							} else if !foundEnd {
+								return errors.New(fmt.Sprintf("Could not find end of %s section. Please specify Type field to create section.", sectionName))
+							}
+						} else if override.Type == "function" {
+							beforeLines = append(beforeLines, functionStartLine)
+							afterLines = append(afterLines, "}")
+						} else if override.Type == "array" {
+							sectionLines = append(sectionLines, fmt.Sprintf("%s)", arrayStartLine))
+						} else if override.Type == "variable" {
+							sectionLines = append(sectionLines, variableStartLine)
+						}
 					}
 				} else {
 					sectionLines = pkgbuildLines[:]
 				}
 
-				if !isArray {
+				if override.Type == "function" {
 					if len(override.Replace) > 0 {
 						sectionStr := strings.Join(sectionLines, "\n")
 
@@ -320,8 +342,8 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 					}
 
 					sectionLines = append(strings.Split(override.Prepend, "\n"), sectionLines...)
-					pkgbuildLines = append(sectionLines, strings.Split(override.Append, "\n")...)
-				} else {
+					sectionLines = append(sectionLines, strings.Split(override.Append, "\n")...)
+				} else if override.Type == "array" {
 					_, sectionItems, err := arrayLineToItems(sectionLines[0])
 
 					if err != nil {
@@ -347,7 +369,33 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 					joinedSectionItems := strings.Join(sectionItems, " ")
 
 					if len(strings.Trim(joinedSectionItems, " ")) > 0 {
-						sectionLines[0] = fmt.Sprintf("%s%s)", variableStartLine, joinedSectionItems)
+						sectionLines[0] = fmt.Sprintf("%s%s)", arrayStartLine, joinedSectionItems)
+					} else {
+						sectionLines = []string{}
+					}
+				} else if override.Type == "variable" {
+					_, sectionValue, err := splitVariableLine(sectionLines[0])
+
+					if err != nil {
+						return err
+					}
+
+					if len(override.Replace) > 0 {
+						for _, item := range override.Replace {
+							re, err := regexp.Compile(item.From)
+
+							if err != nil {
+								return err
+							}
+
+							sectionValue = re.ReplaceAllString(sectionValue, item.To)
+						}
+					}
+
+					sectionValue = fmt.Sprintf("%s%s%s", override.Prepend, sectionValue, override.Append)
+
+					if len(strings.Trim(sectionValue, " ")) > 0 {
+						sectionLines[0] = fmt.Sprintf("%s%s", variableStartLine, sectionValue)
 					} else {
 						sectionLines = []string{}
 					}
@@ -659,7 +707,7 @@ func arrayLineToItems(line string) (string, []string, error) {
 	parts := strings.SplitN(line, "=", 2)
 
 	if len(parts) != 2 {
-		return "", nil, errors.New("Invalid variable line.")
+		return "", nil, errors.New("Invalid array line.")
 	}
 
 	sectionName := parts[0]
@@ -674,4 +722,14 @@ func arrayLineToItems(line string) (string, []string, error) {
 	results := re.FindAllString(varsStr, -1)
 
 	return sectionName, results, nil
+}
+
+func splitVariableLine(line string) (string, string, error) {
+	parts := strings.SplitN(line, "=", 2)
+
+	if len(parts) != 2 {
+		return "", "", errors.New("Invalid variable line.")
+	}
+
+	return parts[0], parts[1], nil
 }
