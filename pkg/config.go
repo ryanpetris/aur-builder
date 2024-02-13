@@ -16,6 +16,7 @@ type PackageConfig struct {
 }
 
 type PackageConfigOverrides struct {
+	BumpEpoch            int                           `yaml:"bumpEpoch,omitempty"`
 	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
 	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`

@@ -126,6 +126,7 @@ aur-builder needs-build
 
 ### Overrides
 
+* `bumpEpoch` - If specified, will bump the epoch by the specified amount.
 * `bumpPkgrel` - If specified, will bump the pkgrel for the specified package versions by the amount specified. Multiple versions can be specified, and when the `update` command is run, obsolete versions will automatically be removed from the configuration. Example:
 
 ```yaml

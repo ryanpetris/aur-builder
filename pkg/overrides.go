@@ -41,6 +41,14 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 
 	// Then run functions that merely append to the PKGBUILD
 
+	if pconfig.Overrides.BumpEpoch > 0 {
+		err := processBumpEpoch(pconfig, pkgbase)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	if pconfig.Overrides.BumpPkgrel != nil {
 		err := processBumpPkgrel(pconfig, pkgbase)
 
@@ -94,6 +102,41 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 	return nil
 }
 
+func processBumpEpoch(pconfig *PackageConfig, pkgbase string) error {
+	slog.Debug(fmt.Sprintf("Processing pkgrel bump overrides for pkgbase %s", pkgbase))
+
+	tmpl := template.New("t")
+	tmpl, err := tmpl.Parse(`
+epoch=$((epoch + {{ .Bump }}))
+`)
+
+	if err != nil {
+		return err
+	}
+
+	mergedPath := config.GetMergedPath(pkgbase)
+	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
+	pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666)
+
+	if err != nil {
+		return err
+	}
+
+	defer pkgbuild.Close()
+
+	slog.Debug(fmt.Sprintf("Adding %d to epoch for pkgbase %s", pconfig.Overrides.BumpEpoch, pkgbase))
+
+	err = tmpl.Execute(pkgbuild, map[string]string{
+		"Bump": strconv.Itoa(pconfig.Overrides.BumpEpoch),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func processBumpPkgrel(pconfig *PackageConfig, pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing pkgrel bump overrides for pkgbase %s", pkgbase))
 
@@ -129,10 +172,6 @@ fi
 		if err != nil {
 			return err
 		}
-	}
-
-	if err != nil {
-		return err
 	}
 
 	return nil
