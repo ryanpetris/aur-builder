@@ -43,7 +43,23 @@ func (env GithubCiEnv) WriteBuildPackages(pkgbase []string) error {
 		return err
 	}
 
-	fmt.Printf("packages=%s", dataJson)
+	data := fmt.Sprintf("packages=%s", dataJson)
+
+	if ghOutputFile := os.Getenv("GITHUB_OUTPUT"); ghOutputFile != "" {
+		ghOutput, err := os.OpenFile(ghOutputFile, os.O_APPEND|os.O_WRONLY, 0666)
+
+		if err != nil {
+			return err
+		}
+
+		defer ghOutput.Close()
+
+		if _, err = ghOutput.WriteString(data); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println(data)
+	}
 
 	return nil
 }
