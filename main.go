@@ -45,6 +45,9 @@ func main() {
 	case "update":
 		cli.UpdateMain(args)
 
+	case "update-vcs":
+		cli.UpdateVcsMain(args)
+
 	case "formatconfig":
 		cli.FormatConfigMain(args)
 

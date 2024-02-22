@@ -9,10 +9,11 @@ import (
 )
 
 type PackageConfig struct {
-	Source     string                 `yaml:"source,omitempty"`
-	BuildFirst bool                   `yaml:"buildFirst,omitempty"`
-	Overrides  PackageConfigOverrides `yaml:"overrides,omitempty"`
-	Ignore     bool                   `yaml:"ignore,omitempty"`
+	Source     string                            `yaml:"source,omitempty"`
+	BuildFirst bool                              `yaml:"buildFirst,omitempty"`
+	Overrides  PackageConfigOverrides            `yaml:"overrides,omitempty"`
+	Ignore     bool                              `yaml:"ignore,omitempty"`
+	VcInfo     *PackageVersionControlInformation `yaml:"vcInfo,omitempty"`
 }
 
 type PackageConfigOverrides struct {
@@ -42,6 +43,13 @@ type PackageConfigModifySection struct {
 	Append   string                        `yaml:"append,omitempty"`
 	Prepend  string                        `yaml:"prepend,omitempty"`
 	Replace  []PackageConfigOverrideFromTo `yaml:"replace,omitempty"`
+	Rename   string                        `yaml:"rename,omitempty"`
+}
+
+type PackageVersionControlInformation struct {
+	Pkgver          string                        `yaml:"pkgver,omitempty"`
+	Pkgrel          int                           `yaml:"pkgrel,omitempty"`
+	SourceOverrides []PackageConfigOverrideFromTo `yaml:"sourceOverrides,omitempty"`
 }
 
 func LoadConfig(pkgbase string) (*PackageConfig, error) {
@@ -105,4 +113,60 @@ func (pconfig *PackageConfig) Write(pkgbase string) error {
 	}
 
 	return os.WriteFile(configPath, buffer.Bytes(), 0666)
+}
+
+func (vcinfo *PackageVersionControlInformation) IsEqual(newVcinfo *PackageVersionControlInformation) bool {
+	if vcinfo == nil && newVcinfo == nil {
+		return true
+	}
+
+	if vcinfo == nil || newVcinfo == nil {
+		return false
+	}
+
+	if vcinfo.Pkgver != newVcinfo.Pkgver {
+		return false
+	}
+
+	for _, override := range vcinfo.SourceOverrides {
+		found := false
+
+		for _, newOverride := range newVcinfo.SourceOverrides {
+			if override.From == newOverride.From {
+				found = true
+
+				if override.To != newOverride.To {
+					return false
+				}
+			}
+
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	for _, newOverride := range newVcinfo.SourceOverrides {
+		found := false
+
+		for _, override := range vcinfo.SourceOverrides {
+			if override.From == newOverride.From {
+				found = true
+			}
+
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }

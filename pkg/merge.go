@@ -9,7 +9,7 @@ import (
 	"path"
 )
 
-func (pconfig *PackageConfig) Merge(pkgbase string) error {
+func (pconfig *PackageConfig) Merge(pkgbase string, processVcs bool) error {
 	slog.Debug(fmt.Sprintf("Merging %s", pkgbase))
 
 	basePath := config.GetPackagePath(pkgbase)
@@ -66,6 +66,12 @@ func (pconfig *PackageConfig) Merge(pkgbase string) error {
 
 	if err := pconfig.ProcessOverrides(pkgbase); err != nil {
 		return err
+	}
+
+	if processVcs {
+		if err := pconfig.ProcessVcsOverrides(pkgbase); err != nil {
+			return err
+		}
 	}
 
 	if _, err := os.Stat(onmergeScriptPath); err == nil {

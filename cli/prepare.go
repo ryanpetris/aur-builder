@@ -11,6 +11,7 @@ func PrepareMain(args []string) {
 	cmd := flag.NewFlagSet("prepare", flag.ExitOnError)
 
 	cmdPackage := cmd.String("package", "", "name of package to prepare")
+	cmdNoVcs := cmd.Bool("no-vcs", false, "don't process vcs overrides")
 
 	if err := cmd.Parse(args[1:]); err != nil {
 		panic(err)
@@ -34,13 +35,13 @@ func PrepareMain(args []string) {
 
 	for _, pkgbase := range packages {
 		wg.Add(1)
-		go processPackage(pkgbase, &wg)
+		go processPackage(pkgbase, &wg, !*cmdNoVcs)
 	}
 
 	wg.Wait()
 }
 
-func processPackage(pkgbase string, wg *sync.WaitGroup) {
+func processPackage(pkgbase string, wg *sync.WaitGroup, processVcs bool) {
 	defer wg.Done()
 	pconfig, err := pkg.LoadConfig(pkgbase)
 
@@ -48,7 +49,7 @@ func processPackage(pkgbase string, wg *sync.WaitGroup) {
 		panic(err)
 	}
 
-	if err := pconfig.Merge(pkgbase); err != nil {
+	if err := pconfig.Merge(pkgbase, processVcs); err != nil {
 		panic(err)
 	}
 

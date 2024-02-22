@@ -102,6 +102,51 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 	return nil
 }
 
+func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
+	if pconfig.VcInfo == nil {
+		return nil
+	}
+
+	if pconfig.VcInfo.SourceOverrides != nil {
+		err := processVcsSrcOverrides(pkgbase, pconfig.VcInfo.SourceOverrides)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	modifySections := []PackageConfigModifySection{
+		{
+			Type:    "variable",
+			Section: "pkgver",
+			Replace: []PackageConfigOverrideFromTo{
+				{
+					From: "^.*$",
+					To:   pconfig.VcInfo.Pkgver,
+				},
+			},
+		},
+		{
+			Type:    "variable",
+			Section: "pkgrel",
+			Replace: []PackageConfigOverrideFromTo{
+				{
+					From: "^.*$",
+					To:   strconv.Itoa(pconfig.VcInfo.Pkgrel),
+				},
+			},
+		},
+	}
+
+	err := processModifySection(pkgbase, modifySections)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func processBumpEpoch(pconfig *PackageConfig, pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing pkgrel bump overrides for pkgbase %s", pkgbase))
 
@@ -278,6 +323,12 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 		}
 
 		for _, sectionName := range sections {
+			renamedSectionName := sectionName
+
+			if override.Rename != "" {
+				renamedSectionName = override.Rename
+			}
+
 			for _, packageName := range packages {
 				if sectionName == "" && packageName != "" {
 					return errors.New("cannot specify package name without section name")
@@ -289,11 +340,16 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 
 				if packageName != "" {
 					sectionName = fmt.Sprintf("%s_%s", sectionName, packageName)
+					renamedSectionName = fmt.Sprintf("%s_%s", renamedSectionName, packageName)
 				}
 
 				functionStartLine := fmt.Sprintf("%s() {", sectionName)
 				arrayStartLine := fmt.Sprintf("%s=(", sectionName)
 				variableStartLine := fmt.Sprintf("%s=", sectionName)
+
+				renamedFunctionStartLine := fmt.Sprintf("%s() {", renamedSectionName)
+				renamedArrayStartLine := fmt.Sprintf("%s=(", renamedSectionName)
+				renamedVariableStartLine := fmt.Sprintf("%s=", renamedSectionName)
 
 				if sectionName != "" {
 					foundStart := false
@@ -305,11 +361,13 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 								override.Type = "function"
 
 								foundStart = true
+								line = renamedFunctionStartLine
 							} else if (override.Type == "" || override.Type == "array") && strings.HasPrefix(line, arrayStartLine) {
 								override.Type = "array"
 
 								foundStart = true
 								foundEnd = true
+								line = renamedArrayStartLine
 
 								sectionLines = append(sectionLines, line)
 								continue
@@ -318,6 +376,7 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 
 								foundStart = true
 								foundEnd = true
+								line = renamedVariableStartLine
 
 								sectionLines = append(sectionLines, line)
 								continue
@@ -351,12 +410,12 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 								return errors.New(fmt.Sprintf("Could not find end of %s section. Please specify Type field to create section.", sectionName))
 							}
 						} else if override.Type == "function" {
-							beforeLines = append(beforeLines, functionStartLine)
+							beforeLines = append(beforeLines, renamedFunctionStartLine)
 							afterLines = append(afterLines, "}")
 						} else if override.Type == "array" {
-							sectionLines = append(sectionLines, fmt.Sprintf("%s)", arrayStartLine))
+							sectionLines = append(sectionLines, fmt.Sprintf("%s)", renamedArrayStartLine))
 						} else if override.Type == "variable" {
-							sectionLines = append(sectionLines, variableStartLine)
+							sectionLines = append(sectionLines, renamedVariableStartLine)
 						}
 					}
 				} else {
@@ -408,7 +467,7 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 					joinedSectionItems := strings.Join(sectionItems, " ")
 
 					if len(strings.Trim(joinedSectionItems, " ")) > 0 {
-						sectionLines[0] = fmt.Sprintf("%s%s)", arrayStartLine, joinedSectionItems)
+						sectionLines[0] = fmt.Sprintf("%s%s)", renamedArrayStartLine, joinedSectionItems)
 					} else {
 						sectionLines = []string{}
 					}
@@ -434,7 +493,7 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 					sectionValue = fmt.Sprintf("%s%s%s", override.Prepend, sectionValue, override.Append)
 
 					if len(strings.Trim(sectionValue, " ")) > 0 {
-						sectionLines[0] = fmt.Sprintf("%s%s", variableStartLine, sectionValue)
+						sectionLines[0] = fmt.Sprintf("%s%s", renamedVariableStartLine, sectionValue)
 					} else {
 						sectionLines = []string{}
 					}
@@ -771,4 +830,41 @@ func splitVariableLine(line string) (string, string, error) {
 	}
 
 	return parts[0], parts[1], nil
+}
+
+func processVcsSrcOverrides(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+	slog.Debug(fmt.Sprintf("Processing vcs source overrides %s", pkgbase))
+
+	appendText := `
+mapfile -t _SOURCE_ARRAYS < <(compgen -v source)
+
+for _SOURCE_ARRAY in "${_SOURCE_ARRAYS[@]}"; do
+    for ((_SOURCE_INDEX = 0; _SOURCE_INDEX < $(eval echo '"'"\${#${_SOURCE_ARRAY}[*]}"'"'); _SOURCE_INDEX++)); do
+        _SOURCE_VALUE="$(eval echo '"'"\${${_SOURCE_ARRAY}[${_SOURCE_INDEX}]}"'"')"
+%s
+    done
+done
+
+unset _SOURCE_ARRAYS
+unset _SOURCE_ARRAY
+unset _SOURCE_INDEX
+unset _SOURCE_VALUE
+`
+
+	ifText := `
+
+        if [ "${_SOURCE_VALUE}" = "%s" ]; then
+            eval ${_SOURCE_ARRAY}[${_SOURCE_INDEX}]='"'"%s"'"'
+        fi
+`
+
+	ifSections := []string{}
+
+	for _, override := range overrides {
+		ifSections = append(ifSections, fmt.Sprintf(ifText, override.From, override.To))
+	}
+
+	appendText = fmt.Sprintf(appendText, strings.Join(ifSections, "\n"))
+
+	return appendPkgbuild(pkgbase, appendText)
 }

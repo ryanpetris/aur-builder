@@ -73,7 +73,7 @@ func ImportMain(args []string) {
 	}
 
 	if cenv.IsCI() {
-		if err := pconfig.Merge(pkgbase); err != nil {
+		if err := pconfig.Merge(pkgbase, false); err != nil {
 			panic(err)
 		}
 
