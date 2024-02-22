@@ -18,6 +18,10 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		return false, nil
 	}
 
+	if err := pconfig.Merge(pkgbase, false); err != nil {
+		return false, err
+	}
+
 	result, err := GetMergedSources(pkgbase)
 
 	if err != nil {
