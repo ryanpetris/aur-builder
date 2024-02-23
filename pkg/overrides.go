@@ -95,12 +95,12 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 }
 
 func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
-	if pconfig.VcInfo == nil {
+	if pconfig.Vcs == nil {
 		return nil
 	}
 
-	if pconfig.VcInfo.SourceOverrides != nil {
-		err := processVcsSrcOverrides(pkgbase, pconfig.VcInfo.SourceOverrides)
+	if pconfig.Vcs.SourceOverrides != nil {
+		err := processVcsSrcOverrides(pkgbase, pconfig.Vcs.SourceOverrides)
 
 		if err != nil {
 			return err
@@ -123,7 +123,7 @@ func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
 			Replace: []PackageConfigOverrideFromTo{
 				{
 					From: "^.*$",
-					To:   pconfig.VcInfo.Pkgver,
+					To:   pconfig.Vcs.Pkgver,
 				},
 			},
 		},
@@ -133,7 +133,7 @@ func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
 			Replace: []PackageConfigOverrideFromTo{
 				{
 					From: "^.*$",
-					To:   strconv.Itoa(pconfig.VcInfo.Pkgrel),
+					To:   strconv.Itoa(pconfig.Vcs.Pkgrel),
 				},
 			},
 		},

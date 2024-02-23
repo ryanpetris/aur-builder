@@ -70,7 +70,7 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		return false, err
 	}
 
-	vcinfo := &PackageVersionControlInformation{}
+	vcinfo := &PackageVcs{}
 	vcinfo.Pkgver = vcsPkgver
 	vcinfo.Pkgrel = vcsPkgrel
 
@@ -106,22 +106,22 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 
 	updated := false
 
-	if pconfig.VcInfo == nil {
-		pconfig.VcInfo = vcinfo
+	if pconfig.Vcs == nil {
+		pconfig.Vcs = vcinfo
 		updated = true
-	} else if !pconfig.VcInfo.IsEqual(vcinfo) {
-		if isNewer, err := pacman.IsVersionNewer(pconfig.VcInfo.Pkgver, vcinfo.Pkgver); err != nil {
+	} else if !pconfig.Vcs.IsEqual(vcinfo) {
+		if isNewer, err := pacman.IsVersionNewer(pconfig.Vcs.Pkgver, vcinfo.Pkgver); err != nil {
 			return false, err
 		} else if isNewer {
-			pconfig.VcInfo = vcinfo
+			pconfig.Vcs = vcinfo
 			updated = true
-		} else if isNewer, err := pacman.IsVersionNewer(vcinfo.Pkgver, pconfig.VcInfo.Pkgver); err != nil {
+		} else if isNewer, err := pacman.IsVersionNewer(vcinfo.Pkgver, pconfig.Vcs.Pkgver); err != nil {
 			return false, err
 		} else if isNewer {
-			return false, errors.New(fmt.Sprintf("old version %s is newer than new version %s", pconfig.VcInfo.Pkgver, vcinfo.Pkgver))
+			return false, errors.New(fmt.Sprintf("old version %s is newer than new version %s", pconfig.Vcs.Pkgver, vcinfo.Pkgver))
 		} else {
-			vcinfo.Pkgrel = pconfig.VcInfo.Pkgrel + 1
-			pconfig.VcInfo = vcinfo
+			vcinfo.Pkgrel = pconfig.Vcs.Pkgrel + 1
+			pconfig.Vcs = vcinfo
 			updated = true
 		}
 	}

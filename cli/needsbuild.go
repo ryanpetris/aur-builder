@@ -25,7 +25,7 @@ func NeedsBuildMain(args []string) {
 			panic(err)
 		}
 
-		if pconfig.VcInfo != nil && pconfig.VcInfo.Pkgver == "" {
+		if pconfig.Vcs != nil && pconfig.Vcs.Pkgver == "" {
 			slog.Info(fmt.Sprintf("Skipping VCS package %s without VCS information. Run update-vcs.", pkgbase))
 			continue
 		}

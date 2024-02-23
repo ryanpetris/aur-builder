@@ -9,10 +9,10 @@ import (
 )
 
 type PackageConfig struct {
-	Source    string                            `yaml:"source,omitempty"`
-	Overrides PackageConfigOverrides            `yaml:"overrides,omitempty"`
-	Ignore    bool                              `yaml:"ignore,omitempty"`
-	VcInfo    *PackageVersionControlInformation `yaml:"vcInfo,omitempty"`
+	Source    string                 `yaml:"source,omitempty"`
+	Overrides PackageConfigOverrides `yaml:"overrides,omitempty"`
+	Ignore    bool                   `yaml:"ignore,omitempty"`
+	Vcs       *PackageVcs            `yaml:"vcs,omitempty"`
 }
 
 type PackageConfigOverrides struct {
@@ -44,7 +44,7 @@ type PackageConfigModifySection struct {
 	Rename   string                        `yaml:"rename,omitempty"`
 }
 
-type PackageVersionControlInformation struct {
+type PackageVcs struct {
 	Pkgver          string                        `yaml:"pkgver,omitempty"`
 	Pkgrel          int                           `yaml:"pkgrel,omitempty"`
 	SourceOverrides []PackageConfigOverrideFromTo `yaml:"sourceOverrides,omitempty"`
@@ -113,7 +113,7 @@ func (pconfig *PackageConfig) Write(pkgbase string) error {
 	return os.WriteFile(configPath, buffer.Bytes(), 0666)
 }
 
-func (vcinfo *PackageVersionControlInformation) IsEqual(newVcinfo *PackageVersionControlInformation) bool {
+func (vcinfo *PackageVcs) IsEqual(newVcinfo *PackageVcs) bool {
 	if vcinfo == nil && newVcinfo == nil {
 		return true
 	}

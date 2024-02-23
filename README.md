@@ -123,7 +123,7 @@ aur-builder needs-build
 * `ignore` - Ignores this package, unless explicitly specified via the `--package` argument.
 * `overrides` - Overrides for this package. See the [overrides](#overrides) section.
 
-TODO: Document vcInfo.
+TODO: Document vcs.
 
 ### Overrides
 

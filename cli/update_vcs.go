@@ -27,7 +27,7 @@ func UpdateVcsMain(args []string) {
 			continue
 		}
 
-		if pconfig.VcInfo == nil {
+		if pconfig.Vcs == nil {
 			continue
 		}
 
@@ -41,7 +41,7 @@ func UpdateVcsMain(args []string) {
 			continue
 		}
 
-		version := fmt.Sprintf("%s-%d", pconfig.VcInfo.Pkgver, pconfig.VcInfo.Pkgrel)
+		version := fmt.Sprintf("%s-%d", pconfig.Vcs.Pkgver, pconfig.Vcs.Pkgrel)
 
 		if exists, err := git.PackageUpdateBranchExists(pkgbase, version); err != nil {
 			panic(err)
