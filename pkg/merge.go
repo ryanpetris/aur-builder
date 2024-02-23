@@ -9,6 +9,23 @@ import (
 	"path"
 )
 
+func (pconfig *PackageConfig) ClearMerge(pkgbase string) error {
+	basePath := config.GetPackagePath(pkgbase)
+	mergedPath := config.GetMergedPath(pkgbase)
+
+	if _, err := os.Stat(basePath); err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(mergedPath); err == nil {
+		if err = os.RemoveAll(mergedPath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (pconfig *PackageConfig) Merge(pkgbase string, processVcs bool) error {
 	slog.Debug(fmt.Sprintf("Merging %s", pkgbase))
 

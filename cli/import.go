@@ -72,11 +72,19 @@ func ImportMain(args []string) {
 		panic(err)
 	}
 
-	if cenv.IsCI() {
-		if err := pconfig.Merge(pkgbase, false); err != nil {
+	if err := pconfig.Merge(pkgbase, false); err != nil {
+		panic(err)
+	}
+
+	if updated, err := pconfig.GenVcsInfo(pkgbase); err != nil {
+		panic(err)
+	} else if updated {
+		if err := pconfig.Write(pkgbase); err != nil {
 			panic(err)
 		}
+	}
 
+	if cenv.IsCI() {
 		if err := pacman.GenSrcInfo(pkgbase); err != nil {
 			panic(err)
 		}
@@ -109,6 +117,10 @@ func ImportMain(args []string) {
 		}
 
 		if err := git.SwitchToMaster(); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := pconfig.ClearMerge(pkgbase); err != nil {
 			panic(err)
 		}
 	}

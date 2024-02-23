@@ -9,18 +9,16 @@ import (
 )
 
 type PackageConfig struct {
-	Source     string                            `yaml:"source,omitempty"`
-	BuildFirst bool                              `yaml:"buildFirst,omitempty"`
-	Overrides  PackageConfigOverrides            `yaml:"overrides,omitempty"`
-	Ignore     bool                              `yaml:"ignore,omitempty"`
-	VcInfo     *PackageVersionControlInformation `yaml:"vcInfo,omitempty"`
+	Source    string                            `yaml:"source,omitempty"`
+	Overrides PackageConfigOverrides            `yaml:"overrides,omitempty"`
+	Ignore    bool                              `yaml:"ignore,omitempty"`
+	VcInfo    *PackageVersionControlInformation `yaml:"vcInfo,omitempty"`
 }
 
 type PackageConfigOverrides struct {
 	BumpEpoch            int                           `yaml:"bumpEpoch,omitempty"`
 	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
 	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
-	ClearPkgverFunc      bool                          `yaml:"clearPkgverFunc,omitempty"`
 	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
 	DeleteFile           []string                      `yaml:"deleteFile,omitempty"`
 	ModifySection        []PackageConfigModifySection  `yaml:"modifySection,omitempty"`

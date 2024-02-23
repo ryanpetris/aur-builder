@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ryanpetris/aur-builder/config"
+	"github.com/ryanpetris/aur-builder/misc"
 	"github.com/ryanpetris/aur-builder/pacman"
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -41,7 +43,7 @@ func GetMergedSources(pkgbase string) (map[string][]string, error) {
 	return getPkgbuildSources(pkgbuildPath)
 }
 
-func GetMergedVcsPkgver(pkgbase string) (string, error) {
+func GetMergedVcsPkgver(pkgbase string) (string, int, error) {
 	basePath := config.GetMergedPath(pkgbase)
 	pkgbuildPath := path.Join(basePath, "PKGBUILD")
 
@@ -149,13 +151,21 @@ done
 	return result, nil
 }
 
-func getPkgbuildVcsPkgver(pkgbuildPath string) (string, error) {
+func getPkgbuildVcsPkgver(pkgbuildPath string) (string, int, error) {
 	cmdText := `
 set -e
 
 source "${1}"
 
-echo "$(_vcs_pkgver)"
+_r_pkgver="$([[ "$(type -t pkgver || true)" == "function" ]] && pkgver || echo "$pkgver")"
+_r_pkgrel="1"
+
+if [[ "$pkgver" == "$_r_pkgver" ]]; then
+	_r_pkgrel="$pkgrel"
+fi
+
+echo "${_r_pkgver}"
+echo "${_r_pkgrel}"
 `
 
 	var stdoutBuf bytes.Buffer
@@ -167,10 +177,22 @@ echo "$(_vcs_pkgver)"
 	err := cmd.Run()
 
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
-	return strings.Split(stdoutBuf.String(), "\n")[0], nil
+	parts := misc.FilterEmptyString(strings.Split(stdoutBuf.String(), "\n"))
+
+	if len(parts) != 2 {
+		return "", 0, errors.New(fmt.Sprintf("invalid pkgver result: %s", stdoutBuf.String()))
+	}
+
+	pkgrel, err := strconv.Atoi(parts[1])
+
+	if err != nil {
+		return "", 0, err
+	}
+
+	return parts[0], pkgrel, nil
 }
 
 func getPkgbuildVersion(pkgbuildPath string) (string, error) {

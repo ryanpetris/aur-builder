@@ -65,14 +65,6 @@ func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 		}
 	}
 
-	if pconfig.Overrides.ClearPkgverFunc {
-		err := processClearPkgverFunc(pkgbase)
-
-		if err != nil {
-			return err
-		}
-	}
-
 	if pconfig.Overrides.ClearSignatures || pconfig.Overrides.RemoveSource != nil {
 		err := processRemoveSources(pkgbase, pconfig.Overrides)
 
@@ -116,6 +108,15 @@ func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
 	}
 
 	modifySections := []PackageConfigModifySection{
+		{
+			Type:    "function",
+			Section: "pkgver",
+			Replace: []PackageConfigOverrideFromTo{
+				{
+					From: "(?m)^.*$",
+				},
+			},
+		},
 		{
 			Type:    "variable",
 			Section: "pkgver",
@@ -226,14 +227,6 @@ func processClearDependsVersions(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing clear depends versions override for pkgbase %s", pkgbase))
 
 	appendText := `mapfile -t depends < <((IFS=$'\n'; echo "${depends[*]}") | sed -E 's/[<>=].*$//' | sort | uniq)`
-
-	return appendPkgbuild(pkgbase, appendText)
-}
-
-func processClearPkgverFunc(pkgbase string) error {
-	slog.Debug(fmt.Sprintf("Processing clear pkgver function override for pkgbase %s", pkgbase))
-
-	appendText := `unset -f pkgver`
 
 	return appendPkgbuild(pkgbase, appendText)
 }
@@ -436,11 +429,21 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 							sectionStr = re.ReplaceAllString(sectionStr, item.To)
 						}
 
-						sectionLines = strings.Split(sectionStr, "\n")
+						sectionLines = misc.FilterEmptyString(strings.Split(sectionStr, "\n"))
 					}
 
-					sectionLines = append(strings.Split(override.Prepend, "\n"), sectionLines...)
-					sectionLines = append(sectionLines, strings.Split(override.Append, "\n")...)
+					if len(override.Prepend) > 0 {
+						sectionLines = append(strings.Split(override.Prepend, "\n"), sectionLines...)
+					}
+
+					if len(override.Append) > 0 {
+						sectionLines = append(sectionLines, strings.Split(override.Append, "\n")...)
+					}
+
+					if len(sectionLines) == 0 {
+						beforeLines = beforeLines[:len(beforeLines)-1]
+						afterLines = afterLines[1:]
+					}
 				} else if override.Type == "array" {
 					_, sectionItems, err := arrayLineToItems(sectionLines[0])
 

@@ -27,6 +27,10 @@ func UpdateVcsMain(args []string) {
 			continue
 		}
 
+		if pconfig.VcInfo == nil {
+			continue
+		}
+
 		updated, err := pconfig.GenVcsInfo(pkgbase)
 
 		if err != nil {

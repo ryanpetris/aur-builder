@@ -19,6 +19,17 @@ func NeedsBuildMain(args []string) {
 	}
 
 	for _, pkgbase := range allPackages {
+		pconfig, err := pkg.LoadConfig(pkgbase)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if pconfig.VcInfo != nil && pconfig.VcInfo.Pkgver == "" {
+			slog.Info(fmt.Sprintf("Skipping VCS package %s without VCS information. Run update-vcs.", pkgbase))
+			continue
+		}
+
 		tracker := misc.PackageTracker{
 			Pkgbase: pkgbase,
 		}
@@ -90,20 +101,6 @@ func NeedsBuildMain(args []string) {
 
 		if !skip {
 			updatePackages = append(updatePackages, pkgbase)
-		}
-	}
-
-	for _, pkgbase := range updatePackages {
-		pconfig, err := pkg.LoadConfig(pkgbase)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if pconfig.BuildFirst {
-			slog.Info(fmt.Sprintf("Package %s is marked Build First so skipping all others.", pkgbase))
-			updatePackages = []string{pkgbase}
-			break
 		}
 	}
 

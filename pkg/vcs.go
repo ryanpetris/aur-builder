@@ -14,10 +14,6 @@ import (
 func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 	slog.Debug(fmt.Sprintf("Generating VCS Package Information for %s", pkgbase))
 
-	if pconfig.VcInfo == nil {
-		return false, nil
-	}
-
 	if err := pconfig.Merge(pkgbase, false); err != nil {
 		return false, err
 	}
@@ -38,6 +34,10 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 
 			if err != nil {
 				return false, err
+			}
+
+			if source.FragmentType == "commit" {
+				continue
 			}
 
 			sources[source.GetFolder()] = source
@@ -64,7 +64,7 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		return false, err
 	}
 
-	vcsPkgver, err := GetMergedVcsPkgver(pkgbase)
+	vcsPkgver, vcsPkgrel, err := GetMergedVcsPkgver(pkgbase)
 
 	if err != nil {
 		return false, err
@@ -72,7 +72,7 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 
 	vcinfo := &PackageVersionControlInformation{}
 	vcinfo.Pkgver = vcsPkgver
-	vcinfo.Pkgrel = 1
+	vcinfo.Pkgrel = vcsPkgrel
 
 	for _, srcPath := range dirs {
 		if !srcPath.IsDir() {

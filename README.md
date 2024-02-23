@@ -120,9 +120,10 @@ aur-builder needs-build
 ### Top-Level
 
 * `source` - The source of the package, either `aur` or `arch`. If the package is local to this repository, omit this option.
-* `buildFirst` - If specified and if [needs-build](#needs-build) determines this package needs to be built, then it will only return this package instead of any other package. Once built, the needs-build command will return other packages like normal.
 * `ignore` - Ignores this package, unless explicitly specified via the `--package` argument.
 * `overrides` - Overrides for this package. See the [overrides](#overrides) section.
+
+TODO: Document vcInfo.
 
 ### Overrides
 
@@ -135,7 +136,6 @@ bumpPkgrel:
 ```
 
 * `clearDependsVersions` - Sometimes packages are locked to specific versions unnecessarily; this will remove those depends versions. If you need something more granular, you can try the `modifySection` override below.
-* `clearPkgverFunc` - Sometimes packages have a pkgver function which can interfere with this tool's version detection. This will remove the pkgver function altogether so that the pkgver variable will be used.
 * `clearSignatures` - This removes all signature files from the sources list along with clearing the `validpgpkeys` section, allowing the package to be built without signatures. Generally packages also have `sums` for all the relevant files and importing signatures can be problematic. This is an alternative of just blindly importing signatures or disabling signatures via the command line in makepkg.
 * `deleteFile` - Array of files to delete. This occurs in the `merged` directory after all files are merged.
 * `modifySection` - Modifies a section of the pkgbuild file. The behavior depends on whether the section is an array or a function. For more information see the [Modify Section Overrides](#modify-section-overrides) configuration.
@@ -159,6 +159,7 @@ Each `modifySection` array item is processed in the order listed in the configur
 * `replace` - Replaces matched lines or array items with the result. Note that only the matched section will be replace, not the whole line. Therefore if you intend to replace or remove the whole line, ensure the regular expression covers the whole line.
     * `from` - A regular expression for the line to find
     * `to` - The replacement value.
+* `rename` - Renames the section. Only the section name is updated; the package name remains appended to the function/array/variable if applicable.
 
 ### Examples
 
