@@ -138,6 +138,24 @@ func UpdateMain(args []string) {
 			panic(err)
 		}
 
+		pconfig, err := pkg.LoadConfig(tracker.Pkgbase)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if err := pconfig.Merge(tracker.Pkgbase, false); err != nil {
+			panic(err)
+		}
+
+		if updated, err := pconfig.GenVcsInfo(tracker.Pkgbase); err != nil {
+			panic(err)
+		} else if updated {
+			if err := pconfig.Write(tracker.Pkgbase); err != nil {
+				panic(err)
+			}
+		}
+
 		if cenv.IsCI() {
 			if err := git.AddAll(); err != nil {
 				panic(err)
