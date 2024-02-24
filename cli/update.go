@@ -150,9 +150,16 @@ func UpdateMain(args []string) {
 
 		if updated, err := pconfig.GenVcsInfo(tracker.Pkgbase); err != nil {
 			panic(err)
-		} else if updated {
-			if err := pconfig.Write(tracker.Pkgbase); err != nil {
-				panic(err)
+		} else {
+			if !updated && pconfig.Vcs != nil {
+				pconfig.Vcs.Pkgrel += 1
+				updated = true
+			}
+
+			if updated {
+				if err := pconfig.Write(tracker.Pkgbase); err != nil {
+					panic(err)
+				}
 			}
 		}
 

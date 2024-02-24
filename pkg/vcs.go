@@ -103,17 +103,17 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		}
 	}
 
-	updated := false
-
 	if pconfig.Vcs == nil {
 		pconfig.Vcs = vcinfo
-		updated = true
+
+		return true, nil
 	} else if !pconfig.Vcs.IsEqual(vcinfo) {
 		if isNewer, err := pacman.IsVersionNewer(pconfig.Vcs.Pkgver, vcinfo.Pkgver); err != nil {
 			return false, err
 		} else if isNewer {
 			pconfig.Vcs = vcinfo
-			updated = true
+
+			return true, nil
 		} else if isNewer, err := pacman.IsVersionNewer(vcinfo.Pkgver, pconfig.Vcs.Pkgver); err != nil {
 			return false, err
 		} else if isNewer {
@@ -121,9 +121,10 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		} else {
 			vcinfo.Pkgrel = pconfig.Vcs.Pkgrel + 1
 			pconfig.Vcs = vcinfo
-			updated = true
+
+			return true, nil
 		}
 	}
 
-	return updated, nil
+	return false, nil
 }
