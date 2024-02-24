@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"flag"
 	"fmt"
 	"github.com/ryanpetris/aur-builder/cienv"
 	"github.com/ryanpetris/aur-builder/git"
@@ -9,6 +10,14 @@ import (
 )
 
 func UpdateVcsMain(args []string) {
+	cmd := flag.NewFlagSet("update-vcs", flag.ExitOnError)
+
+	cmdAll := cmd.Bool("all", false, "check all packages")
+
+	if err := cmd.Parse(args[1:]); err != nil {
+		panic(err)
+	}
+
 	cenv := cienv.FindCiEnv()
 	allPackages, err := pkg.GetPackages()
 
@@ -27,7 +36,7 @@ func UpdateVcsMain(args []string) {
 			continue
 		}
 
-		if pconfig.Vcs == nil {
+		if pconfig.Vcs == nil && !*cmdAll {
 			continue
 		}
 

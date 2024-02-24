@@ -24,9 +24,8 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		return false, err
 	}
 
-	hasVcSources := false
-	sources := map[string]*pacman.Source{}
-	sourceTypes := map[string]string{}
+	vcsSources := map[string]*pacman.Source{}
+	vcsSourceTypes := map[string]string{}
 
 	for srcType, srcItems := range result {
 		for _, srcItem := range srcItems {
@@ -40,16 +39,16 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 				continue
 			}
 
-			sources[source.GetFolder()] = source
-			sourceTypes[source.GetFolder()] = srcType
-
-			if source.VcsType == "git" {
-				hasVcSources = true
+			if source.VcsType != "git" {
+				continue
 			}
+
+			vcsSources[source.GetFolder()] = source
+			vcsSourceTypes[source.GetFolder()] = srcType
 		}
 	}
 
-	if !hasVcSources {
+	if len(vcsSources) == 0 {
 		return false, nil
 	}
 
@@ -79,7 +78,7 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 			continue
 		}
 
-		source := sources[srcPath.Name()]
+		source := vcsSources[srcPath.Name()]
 
 		if source == nil {
 			continue
