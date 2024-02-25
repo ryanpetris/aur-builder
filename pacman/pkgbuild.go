@@ -2,22 +2,30 @@ package pacman
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"github.com/ryanpetris/aur-builder/config"
 	"os/exec"
 	"strings"
 )
 
-//go:embed get_pkgbuild_var.sh
-var getPkgbuildVarScript string
-
 func GetPkgbuildVar(pkgbase string, varname string) (string, error) {
+	cmdText := `
+set -e
+set -o pipefail
+
+PKGBUILD_VAR="${PKGBUILD_VAR}[*]"
+
+pushd "$(dirname "$PKGBUILD_PATH")" >/dev/null
+source "$(basename "$PKGBUILD_PATH")"
+export IFS=$'\n'
+echo "${!PKGBUILD_VAR}"
+`
+
 	mergedPath := config.GetMergedPath(pkgbase)
 
 	var stdoutBuf bytes.Buffer
 
-	cmd := exec.Command("bash", "-c", getPkgbuildVarScript)
+	cmd := exec.Command("bash", "-c", cmdText)
 	cmd.Stdout = &stdoutBuf
 	cmd.Env = append(cmd.Environ(), fmt.Sprintf("PKGBUILD_PATH=%s/PKGBUILD", mergedPath))
 	cmd.Env = append(cmd.Environ(), fmt.Sprintf("PKGBUILD_VAR=%s", varname))
