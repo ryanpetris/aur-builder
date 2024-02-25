@@ -96,7 +96,6 @@ The `prepare` command generates the `merged` folder for all packages in the repo
 4. Copies local contents to merged directory (which will overwrite any files with the same name)
 5. Processes overrides from the config.yaml file
 6. Runs onmerge.sh script, if present
-7. Generates the .SRCINFO file in the merged directory
 
 Example:
 

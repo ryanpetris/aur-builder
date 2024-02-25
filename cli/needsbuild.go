@@ -40,20 +40,20 @@ func NeedsBuildMain(args []string) {
 			panic(err)
 		}
 
-		pkginfos, err := pacman.LoadSrcinfo(pkgbase)
+		pkginfo, err := pacman.LoadPkgInfo(pkgbase)
 
 		if err != nil {
 			panic(err)
 		}
 
-		for _, pkginfo := range pkginfos {
+		for _, pkgname := range pkginfo.Pkgname {
 			if tracker.RepositoryVersion == "" {
-				tracker.RepositoryVersion, _ = arch.GetPackageVersion(pkginfo.Pkgname)
+				tracker.RepositoryVersion, _ = arch.GetPackageVersion(pkgname)
 			}
 
 			tracker.Packages = append(tracker.Packages, misc.PackageInfo{
 				Pkgbase:     pkginfo.Pkgbase,
-				Pkgname:     pkginfo.Pkgname,
+				Pkgname:     pkgname,
 				FullVersion: pkginfo.GetFullVersion(),
 				BuildDeps:   pkginfo.GetAllBuildDepends(),
 			})

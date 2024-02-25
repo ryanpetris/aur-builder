@@ -85,12 +85,8 @@ func ImportMain(args []string) {
 	}
 
 	if cenv.IsCI() {
-		if err := pacman.GenSrcInfo(pkgbase); err != nil {
-			panic(err)
-		}
-
-		srcinfo, err := pacman.LoadSrcinfo(pkgbase)
-		pkgver := srcinfo[0].GetFullVersion()
+		pkginfo, err := pacman.LoadPkgInfo(pkgbase)
+		pkgver := pkginfo.GetFullVersion()
 
 		if err != nil {
 			panic(err)

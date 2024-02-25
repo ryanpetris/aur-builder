@@ -2,7 +2,6 @@ package cli
 
 import (
 	"flag"
-	"github.com/ryanpetris/aur-builder/pacman"
 	"github.com/ryanpetris/aur-builder/pkg"
 	"sync"
 )
@@ -50,10 +49,6 @@ func processPackage(pkgbase string, wg *sync.WaitGroup, processVcs bool) {
 	}
 
 	if err := pconfig.Merge(pkgbase, processVcs); err != nil {
-		panic(err)
-	}
-
-	if err := pacman.GenSrcInfo(pkgbase); err != nil {
 		panic(err)
 	}
 }
