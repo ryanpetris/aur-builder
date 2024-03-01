@@ -21,6 +21,10 @@ import (
 func (pconfig *PackageConfig) ProcessOverrides(pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing overrides for pkgbase %s", pkgbase))
 
+	if pconfig.Overrides == nil {
+		return nil
+	}
+
 	// First run functions that manipulate the PKGBUILD
 
 	if pconfig.Overrides.RenamePackage != nil {
@@ -107,11 +111,11 @@ func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
 		}
 	}
 
-	modifySections := []PackageConfigModifySection{
+	modifySections := []*PackageConfigModifySection{
 		{
 			Type:    "function",
 			Section: "pkgver",
-			Replace: []PackageConfigOverrideFromTo{
+			Replace: []*PackageConfigOverrideFromTo{
 				{
 					From: "(?m)^.*$",
 				},
@@ -120,7 +124,7 @@ func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
 		{
 			Type:    "variable",
 			Section: "pkgver",
-			Replace: []PackageConfigOverrideFromTo{
+			Replace: []*PackageConfigOverrideFromTo{
 				{
 					From: "^.*$",
 					To:   pconfig.Vcs.Pkgver,
@@ -130,7 +134,7 @@ func (pconfig *PackageConfig) ProcessVcsOverrides(pkgbase string) error {
 		{
 			Type:    "variable",
 			Section: "pkgrel",
-			Replace: []PackageConfigOverrideFromTo{
+			Replace: []*PackageConfigOverrideFromTo{
 				{
 					From: "^.*$",
 					To:   strconv.Itoa(pconfig.Vcs.Pkgrel),
@@ -231,7 +235,7 @@ func processClearDependsVersions(pkgbase string) error {
 	return appendPkgbuild(pkgbase, appendText)
 }
 
-func processRemoveSources(pkgbase string, overrides PackageConfigOverrides) error {
+func processRemoveSources(pkgbase string, overrides *PackageConfigOverrides) error {
 	slog.Debug(fmt.Sprintf("Processing remove sources override for pkgbase %s", pkgbase))
 
 	if overrides.ClearSignatures {
@@ -282,7 +286,7 @@ func processDeleteFile(pkgbase string, files []string) error {
 	return nil
 }
 
-func processModifySection(pkgbase string, overrides []PackageConfigModifySection) error {
+func processModifySection(pkgbase string, overrides []*PackageConfigModifySection) error {
 	slog.Debug(fmt.Sprintf("Processing modify section overrides for pkgbase %s", pkgbase))
 
 	mergedPath := config.GetMergedPath(pkgbase)
@@ -515,7 +519,7 @@ func processModifySection(pkgbase string, overrides []PackageConfigModifySection
 	return nil
 }
 
-func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+func processRenameFile(pkgbase string, overrides []*PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing move file override for pkgbase %s", pkgbase))
 
 	mergedPath := config.GetMergedPath(pkgbase)
@@ -532,7 +536,7 @@ func processRenameFile(pkgbase string, overrides []PackageConfigOverrideFromTo) 
 	return nil
 }
 
-func processRenamePackage(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+func processRenamePackage(pkgbase string, overrides []*PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing rename package override for pkgbase %s", pkgbase))
 
 	packages, err := pacman.GetPkgbuildVars(pkgbase, "pkgname")
@@ -835,7 +839,7 @@ func splitVariableLine(line string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func processVcsSrcOverrides(pkgbase string, overrides []PackageConfigOverrideFromTo) error {
+func processVcsSrcOverrides(pkgbase string, overrides []*PackageConfigOverrideFromTo) error {
 	slog.Debug(fmt.Sprintf("Processing vcs source overrides %s", pkgbase))
 
 	appendText := `

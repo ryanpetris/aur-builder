@@ -9,22 +9,22 @@ import (
 )
 
 type PackageConfig struct {
-	Source    string                 `yaml:"source,omitempty"`
-	Overrides PackageConfigOverrides `yaml:"overrides,omitempty"`
-	Ignore    bool                   `yaml:"ignore,omitempty"`
-	Vcs       *PackageVcs            `yaml:"vcs,omitempty"`
+	Source    string                  `yaml:"source,omitempty"`
+	Overrides *PackageConfigOverrides `yaml:"overrides,omitempty"`
+	Ignore    bool                    `yaml:"ignore,omitempty"`
+	Vcs       *PackageVcs             `yaml:"vcs,omitempty"`
 }
 
 type PackageConfigOverrides struct {
-	BumpEpoch            int                           `yaml:"bumpEpoch,omitempty"`
-	BumpPkgrel           map[string]int                `yaml:"bumpPkgrel,omitempty"`
-	ClearDependsVersions bool                          `yaml:"clearDependsVersions,omitempty"`
-	ClearSignatures      bool                          `yaml:"clearSignatures,omitempty"`
-	DeleteFile           []string                      `yaml:"deleteFile,omitempty"`
-	ModifySection        []PackageConfigModifySection  `yaml:"modifySection,omitempty"`
-	RemoveSource         []string                      `yaml:"removeSource,omitempty"`
-	RenameFile           []PackageConfigOverrideFromTo `yaml:"renameFile,omitempty"`
-	RenamePackage        []PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
+	BumpEpoch            int                            `yaml:"bumpEpoch,omitempty"`
+	BumpPkgrel           map[string]int                 `yaml:"bumpPkgrel,omitempty"`
+	ClearDependsVersions bool                           `yaml:"clearDependsVersions,omitempty"`
+	ClearSignatures      bool                           `yaml:"clearSignatures,omitempty"`
+	DeleteFile           []string                       `yaml:"deleteFile,omitempty"`
+	ModifySection        []*PackageConfigModifySection  `yaml:"modifySection,omitempty"`
+	RemoveSource         []string                       `yaml:"removeSource,omitempty"`
+	RenameFile           []*PackageConfigOverrideFromTo `yaml:"renameFile,omitempty"`
+	RenamePackage        []*PackageConfigOverrideFromTo `yaml:"renamePackage,omitempty"`
 }
 
 type PackageConfigOverrideFromTo struct {
@@ -33,21 +33,27 @@ type PackageConfigOverrideFromTo struct {
 }
 
 type PackageConfigModifySection struct {
-	Type     string                        `yaml:"type,omitempty"`
-	Section  string                        `yaml:"section,omitempty"`
-	Sections []string                      `yaml:"sections,omitempty"`
-	Package  string                        `yaml:"package,omitempty"`
-	Packages []string                      `yaml:"packages,omitempty"`
-	Append   string                        `yaml:"append,omitempty"`
-	Prepend  string                        `yaml:"prepend,omitempty"`
-	Replace  []PackageConfigOverrideFromTo `yaml:"replace,omitempty"`
-	Rename   string                        `yaml:"rename,omitempty"`
+	Type     string                         `yaml:"type,omitempty"`
+	Section  string                         `yaml:"section,omitempty"`
+	Sections []string                       `yaml:"sections,omitempty"`
+	Package  string                         `yaml:"package,omitempty"`
+	Packages []string                       `yaml:"packages,omitempty"`
+	Append   string                         `yaml:"append,omitempty"`
+	Prepend  string                         `yaml:"prepend,omitempty"`
+	Replace  []*PackageConfigOverrideFromTo `yaml:"replace,omitempty"`
+	Rename   string                         `yaml:"rename,omitempty"`
 }
 
 type PackageVcs struct {
-	Pkgver          string                        `yaml:"pkgver,omitempty"`
-	Pkgrel          int                           `yaml:"pkgrel,omitempty"`
-	SourceOverrides []PackageConfigOverrideFromTo `yaml:"sourceOverrides,omitempty"`
+	Pkgver          string                         `yaml:"pkgver,omitempty"`
+	Pkgrel          int                            `yaml:"pkgrel,omitempty"`
+	SourceOverrides []*PackageConfigOverrideFromTo `yaml:"sourceOverrides,omitempty"`
+	Submodules      map[string]PackageVcsSubmodule `yaml:"submodules,omitempty"`
+}
+
+type PackageVcsSubmodule struct {
+	Source string `yaml:"source,omitempty"`
+	Name   string `yaml:"name,omitempty"`
 }
 
 func LoadConfig(pkgbase string) (*PackageConfig, error) {
