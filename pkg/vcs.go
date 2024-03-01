@@ -155,9 +155,13 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 	}
 
 	if pconfig.Vcs == nil {
-		pconfig.Vcs = vcinfo
+		if len(vcinfo.Submodules) > 0 {
+			pconfig.Vcs = vcinfo
 
-		return true, nil
+			return true, nil
+		} else {
+			return false, nil
+		}
 	} else if !pconfig.Vcs.IsEqual(vcinfo) {
 		if isNewer, err := pacman.IsVersionNewer(pconfig.Vcs.Pkgver, vcinfo.Pkgver); err != nil {
 			return false, err

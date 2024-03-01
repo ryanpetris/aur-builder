@@ -7,15 +7,22 @@ import (
 	"github.com/ryanpetris/aur-builder/git"
 	"github.com/ryanpetris/aur-builder/pkg"
 	"log/slog"
+	"os"
 )
 
 func UpdateVcsMain(args []string) {
 	cmd := flag.NewFlagSet("update-vcs", flag.ExitOnError)
 
+	cmdPackage := cmd.String("package", "", "name of package to update")
 	cmdAll := cmd.Bool("all", false, "check all packages")
 
 	if err := cmd.Parse(args[1:]); err != nil {
 		panic(err)
+	}
+
+	if *cmdPackage != "" && *cmdAll {
+		slog.Error("--package and --all options are mutually-exclusive.")
+		os.Exit(1)
 	}
 
 	cenv := cienv.FindCiEnv()
@@ -26,19 +33,29 @@ func UpdateVcsMain(args []string) {
 	}
 
 	for _, pkgbase := range allPackages {
+		if *cmdPackage != "" && *cmdPackage != pkgbase {
+			continue
+		}
+
 		pconfig, err := pkg.LoadConfig(pkgbase)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if pconfig.Ignore {
+		if *cmdPackage == "" {
+			if pconfig.Ignore {
+				continue
+			}
+
+			if pconfig.Vcs == nil && !*cmdAll {
+				continue
+			}
+		} else if *cmdPackage != pkgbase {
 			continue
 		}
 
-		if pconfig.Vcs == nil && !*cmdAll {
-			continue
-		}
+		slog.Info(fmt.Sprintf("Checking package %s for VCS updates...", pkgbase))
 
 		updated, err := pconfig.GenVcsInfo(pkgbase)
 
