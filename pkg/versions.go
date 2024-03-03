@@ -19,6 +19,10 @@ func (pconfig *PackageConfig) CleanPkgrelBumpVersions(pkgver string) error {
 		return nil
 	}
 
+	if pconfig.Overrides == nil {
+		return nil
+	}
+
 	if pconfig.Overrides.BumpPkgrel == nil {
 		return nil
 	}
