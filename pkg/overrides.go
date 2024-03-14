@@ -530,8 +530,7 @@ func processModifySection(pkgbase string, overrides []*PackageConfigModifySectio
 					}
 				}
 
-				pkgbuildLines = beforeLines[:]
-				pkgbuildLines = append(pkgbuildLines, sectionLines...)
+				pkgbuildLines = append(beforeLines, sectionLines...)
 				pkgbuildLines = append(pkgbuildLines, afterLines...)
 			}
 		}
