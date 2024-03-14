@@ -364,7 +364,7 @@ func processModifySection(pkgbase string, overrides []*PackageConfigModifySectio
 
 								foundStart = true
 								foundEnd = true
-								line = renamedArrayStartLine
+								line = renamedArrayStartLine + line[len(arrayStartLine):]
 
 								sectionLines = append(sectionLines, line)
 								continue
@@ -373,7 +373,7 @@ func processModifySection(pkgbase string, overrides []*PackageConfigModifySectio
 
 								foundStart = true
 								foundEnd = true
-								line = renamedVariableStartLine
+								line = renamedVariableStartLine + line[len(variableStartLine):]
 
 								sectionLines = append(sectionLines, line)
 								continue
@@ -504,9 +504,34 @@ func processModifySection(pkgbase string, overrides []*PackageConfigModifySectio
 					} else {
 						sectionLines = []string{}
 					}
+				} else {
+					if len(override.Replace) > 0 {
+						sectionStr := strings.Join(sectionLines, "\n")
+
+						for _, item := range override.Replace {
+							re, err := regexp.Compile(item.From)
+
+							if err != nil {
+								return err
+							}
+
+							sectionStr = re.ReplaceAllString(sectionStr, item.To)
+						}
+
+						sectionLines = misc.FilterEmptyString(strings.Split(sectionStr, "\n"))
+					}
+
+					if len(override.Prepend) > 0 {
+						sectionLines = append(strings.Split(override.Prepend, "\n"), sectionLines...)
+					}
+
+					if len(override.Append) > 0 {
+						sectionLines = append(sectionLines, strings.Split(override.Append, "\n")...)
+					}
 				}
 
-				pkgbuildLines = append(beforeLines, sectionLines...)
+				pkgbuildLines = beforeLines[:]
+				pkgbuildLines = append(pkgbuildLines, sectionLines...)
 				pkgbuildLines = append(pkgbuildLines, afterLines...)
 			}
 		}
