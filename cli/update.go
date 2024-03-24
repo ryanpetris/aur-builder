@@ -144,10 +144,6 @@ func UpdateMain(args []string) {
 			panic(err)
 		}
 
-		if err := pconfig.Merge(tracker.Pkgbase, false); err != nil {
-			panic(err)
-		}
-
 		if updated, err := pconfig.GenVcsInfo(tracker.Pkgbase); err != nil {
 			panic(err)
 		} else {
@@ -161,6 +157,14 @@ func UpdateMain(args []string) {
 					panic(err)
 				}
 			}
+		}
+
+		if err := pconfig.ClearMerge(tracker.Pkgbase); err != nil {
+			panic(err)
+		}
+
+		if err := pconfig.Merge(tracker.Pkgbase, false); err != nil {
+			panic(err)
 		}
 
 		if cenv.IsCI() {
