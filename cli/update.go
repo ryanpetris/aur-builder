@@ -163,11 +163,11 @@ func UpdateMain(args []string) {
 			panic(err)
 		}
 
-		if err := pconfig.Merge(tracker.Pkgbase, false); err != nil {
-			panic(err)
-		}
-
 		if cenv.IsCI() {
+			if err := pconfig.Merge(tracker.Pkgbase, false); err != nil {
+				panic(err)
+			}
+
 			if err := git.AddAll(); err != nil {
 				panic(err)
 			}

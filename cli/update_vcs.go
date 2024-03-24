@@ -88,7 +88,15 @@ func UpdateVcsMain(args []string) {
 			panic(err)
 		}
 
+		if err := pconfig.ClearMerge(pkgbase); err != nil {
+			panic(err)
+		}
+
 		if cenv.IsCI() {
+			if err := pconfig.Merge(pkgbase, true); err != nil {
+				panic(err)
+			}
+
 			if err := git.AddAll(); err != nil {
 				panic(err)
 			}
