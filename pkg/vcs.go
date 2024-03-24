@@ -47,7 +47,6 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 			vcsSourceTypes[source.GetFolder()] = srcType
 		}
 	}
-
 	if len(vcsSources) == 0 {
 		return false, nil
 	}
@@ -155,7 +154,7 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 	}
 
 	if pconfig.Vcs == nil {
-		if len(vcinfo.Submodules) > 0 {
+		if len(vcinfo.SourceOverrides) > 0 {
 			pconfig.Vcs = vcinfo
 
 			return true, nil
