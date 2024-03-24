@@ -84,6 +84,10 @@ func ImportMain(args []string) {
 		panic(err)
 	}
 
+	if err := pconfig.Merge(pkgbase, false); err != nil {
+		panic(err)
+	}
+
 	if cenv.IsCI() {
 		pkginfo, err := pacman.LoadPkgInfo(pkgbase)
 		pkgver := pkginfo.GetFullVersion()
