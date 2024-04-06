@@ -51,6 +51,9 @@ func main() {
 	case "formatconfig":
 		cli.FormatConfigMain(args)
 
+	case "bump-pkgrel":
+		cli.BumpPkgrel(args)
+
 	default:
 		fmt.Println("invalid command")
 		os.Exit(1)
