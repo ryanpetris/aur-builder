@@ -46,6 +46,10 @@ func BumpPkgrel(args []string) {
 			continue
 		}
 
+		if err := pconfig.Merge(pkgbase, true); err != nil {
+			panic(err)
+		}
+
 		pkgnames, err := pkg.GetMergedPkgnames(pkgbase)
 
 		if err != nil {
@@ -66,6 +70,10 @@ func BumpPkgrel(args []string) {
 		pconfig, err := pkg.LoadConfig(pkgbase)
 
 		if err != nil {
+			panic(err)
+		}
+
+		if err := pconfig.Merge(pkgbase, true); err != nil {
 			panic(err)
 		}
 
