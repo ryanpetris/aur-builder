@@ -190,10 +190,53 @@ epoch=$((epoch + {{ .Bump }}))
 func processBumpPkgrel(pconfig *PackageConfig, pkgbase string) error {
 	slog.Debug(fmt.Sprintf("Processing pkgrel bump overrides for pkgbase %s", pkgbase))
 
+	pkgverFunc := `
+_bump_pkgrel() {
+    local pkgrel_parts
+    local new_pkgrel
+    local new_subpkgrel
+
+    local bump_parts
+    local bump_pkgrel
+    local bump_subpkgrel
+
+    IFS='.' read -a pkgrel_parts <<< "$1"
+
+    new_pkgrel="${pkgrel_parts[0]}"
+    new_subpkgrel="${pkgrel_parts[1]}"
+
+    if [ -z "$new_subpkgrel" ]; then
+        new_subpkgrel="0"
+    fi
+
+    IFS='.' read -a bump_parts <<< "$2"
+
+    bump_pkgrel="${bump_parts[0]}"
+    bump_subpkgrel="${bump_parts[1]}"
+
+    if [ -z "$bump_pkgrel" ]; then
+        bump_pkgrel="0"
+    fi
+
+    if [ -z "$bump_subpkgrel" ]; then
+        bump_subpkgrel="0"
+    fi
+
+    new_pkgrel="$(($new_pkgrel + $bump_pkgrel))"
+    new_subpkgrel="$(($new_subpkgrel + $bump_subpkgrel))"
+
+    if [ "$new_subpkgrel" -gt 0 ]; then
+        echo "${new_pkgrel}.${new_subpkgrel}"
+    else
+        echo "$new_pkgrel"
+    fi
+}
+`
+
 	tmpl := template.New("t")
 	tmpl, err := tmpl.Parse(`
 if [ "$pkgver" = "{{ .Version }}" ]; then
-    pkgrel=$((pkgrel + {{ .Bump }}))
+    pkgrel="$(_bump_pkgrel "$pkgrel" "{{ .Bump }}")"
 fi
 `)
 
@@ -206,6 +249,10 @@ fi
 	pkgbuild, err := os.OpenFile(pkgbuildPath, os.O_APPEND|os.O_WRONLY, 0666)
 
 	if err != nil {
+		return err
+	}
+
+	if _, err := pkgbuild.WriteString(pkgverFunc); err != nil {
 		return err
 	}
 
