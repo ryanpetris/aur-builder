@@ -77,7 +77,7 @@ func BumpPkgrel(args []string) {
 			panic(err)
 		}
 
-		upstreamEpoch, mergedPkgver, mergedPkgrel, err := pkg.GetMergedVersionParts(pkgbase)
+		upstreamEpoch, mergedPkgver, mergedPkgrel, mergedSubpkgrel, err := pkg.GetMergedVersionParts(pkgbase)
 
 		if err != nil {
 			panic(err)
@@ -87,7 +87,7 @@ func BumpPkgrel(args []string) {
 
 		if pconfig.Vcs != nil {
 			pconfig.Vcs.Pkgrel += 1
-			branchVersion = pkg.GetVersionString(upstreamEpoch, pconfig.Vcs.Pkgver, pconfig.Vcs.Pkgrel)
+			branchVersion = pkg.GetVersionString(upstreamEpoch, pconfig.Vcs.Pkgver, pconfig.Vcs.Pkgrel, 0)
 		} else {
 			if pconfig.Overrides == nil {
 				pconfig.Overrides = &pkg.PackageConfigOverrides{}
@@ -98,7 +98,7 @@ func BumpPkgrel(args []string) {
 			}
 
 			pconfig.Overrides.BumpPkgrel[mergedPkgver] += 1
-			branchVersion = pkg.GetVersionString(upstreamEpoch, mergedPkgver, mergedPkgrel+1)
+			branchVersion = pkg.GetVersionString(upstreamEpoch, mergedPkgver, mergedPkgrel+1, mergedSubpkgrel)
 		}
 
 		if exists, err := git.PackageUpdateBranchExists(pkgbase, branchVersion); err != nil {

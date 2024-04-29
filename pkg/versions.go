@@ -62,16 +62,16 @@ func GetMergedVcsPkgver(pkgbase string) (string, int, error) {
 }
 
 func GetMergedVersion(pkgbase string) (string, error) {
-	epoch, pkgver, pkgrel, err := GetMergedVersionParts(pkgbase)
+	epoch, pkgver, pkgrel, subpkgrel, err := GetMergedVersionParts(pkgbase)
 
 	if err != nil {
 		return "", err
 	}
 
-	return GetVersionString(epoch, pkgver, pkgrel), nil
+	return GetVersionString(epoch, pkgver, pkgrel, subpkgrel), nil
 }
 
-func GetMergedVersionParts(pkgbase string) (string, string, int, error) {
+func GetMergedVersionParts(pkgbase string) (string, string, int, int, error) {
 	basePath := config.GetMergedPath(pkgbase)
 	pkgbuildPath := path.Join(basePath, "PKGBUILD")
 
@@ -86,24 +86,30 @@ func GetUpstreamPkgnames(pkgbase string) ([]string, error) {
 }
 
 func GetUpstreamVersion(pkgbase string) (string, error) {
-	epoch, pkgver, pkgrel, err := GetUpstreamVersionParts(pkgbase)
+	epoch, pkgver, pkgrel, subpkgrel, err := GetUpstreamVersionParts(pkgbase)
 
 	if err != nil {
 		return "", err
 	}
 
-	return GetVersionString(epoch, pkgver, pkgrel), nil
+	return GetVersionString(epoch, pkgver, pkgrel, subpkgrel), nil
 }
 
-func GetUpstreamVersionParts(pkgbase string) (string, string, int, error) {
+func GetUpstreamVersionParts(pkgbase string) (string, string, int, int, error) {
 	basePath := config.GetUpstreamPath(pkgbase)
 	pkgbuildPath := path.Join(basePath, "PKGBUILD")
 
 	return getPkgbuildVersionParts(pkgbuildPath)
 }
 
-func GetVersionString(epoch string, pkgver string, pkgrel int) string {
-	version := fmt.Sprintf("%s-%d", pkgver, pkgrel)
+func GetVersionString(epoch string, pkgver string, pkgrel int, subpkgrel int) string {
+	pkgrelstr := fmt.Sprintf("%d", pkgrel)
+
+	if subpkgrel > 0 {
+		pkgrelstr = fmt.Sprintf("%s.%d", pkgrelstr, subpkgrel)
+	}
+
+	version := fmt.Sprintf("%s-%s", pkgver, pkgrelstr)
 
 	if epoch != "" {
 		version = fmt.Sprintf("%s:%s", epoch, version)
@@ -236,7 +242,7 @@ echo "${_r_pkgrel}"
 	return parts[0], pkgrel, nil
 }
 
-func getPkgbuildVersionParts(pkgbuildPath string) (string, string, int, error) {
+func getPkgbuildVersionParts(pkgbuildPath string) (string, string, int, int, error) {
 	cmdText := `
 set -e
 
@@ -255,15 +261,41 @@ echo "${pkgrel}"
 	err := cmd.Run()
 
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, 0, err
 	}
 
 	parts := strings.Split(stdoutBuf.String(), "\n")
-	pkgrel, err := strconv.Atoi(parts[2])
 
-	if err != nil {
-		return "", "", 0, err
+	epoch := parts[0]
+	pkgver := parts[1]
+	pkgrel := 0
+	subpkgrel := 0
+
+	if strings.Contains(parts[2], ".") {
+		pkgrelParts := strings.Split(parts[2], ".")
+
+		if len(pkgrelParts) != 2 {
+			return "", "", 0, 0, errors.New("invalid pkgrel")
+		}
+
+		pkgrel, err = strconv.Atoi(pkgrelParts[0])
+
+		if err != nil {
+			return "", "", 0, 0, err
+		}
+
+		subpkgrel, err = strconv.Atoi(pkgrelParts[1])
+
+		if err != nil {
+			return "", "", 0, 0, err
+		}
+	} else {
+		pkgrel, err = strconv.Atoi(parts[2])
+
+		if err != nil {
+			return "", "", 0, 0, err
+		}
 	}
 
-	return parts[0], parts[1], pkgrel, nil
+	return epoch, pkgver, pkgrel, subpkgrel, nil
 }

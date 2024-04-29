@@ -67,13 +67,13 @@ func UpdateVcsMain(args []string) {
 			continue
 		}
 
-		epoch, _, _, err := pkg.GetMergedVersionParts(pkgbase)
+		epoch, _, _, _, err := pkg.GetMergedVersionParts(pkgbase)
 
 		if err != nil {
 			panic(err)
 		}
 
-		version := pkg.GetVersionString(epoch, pconfig.Vcs.Pkgver, pconfig.Vcs.Pkgrel)
+		version := pkg.GetVersionString(epoch, pconfig.Vcs.Pkgver, pconfig.Vcs.Pkgrel, 0)
 
 		if exists, err := git.PackageUpdateBranchExists(pkgbase, version); err != nil {
 			panic(err)
