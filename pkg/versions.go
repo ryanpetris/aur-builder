@@ -54,7 +54,7 @@ func GetMergedSources(pkgbase string) (map[string][]string, error) {
 	return getPkgbuildSources(pkgbuildPath)
 }
 
-func GetMergedVcsPkgver(pkgbase string) (string, int, error) {
+func GetMergedVcsPkgver(pkgbase string) (string, int, int, error) {
 	basePath := config.GetMergedPath(pkgbase)
 	pkgbuildPath := path.Join(basePath, "PKGBUILD")
 
@@ -198,7 +198,7 @@ done
 	return result, nil
 }
 
-func getPkgbuildVcsPkgver(pkgbuildPath string) (string, int, error) {
+func getPkgbuildVcsPkgver(pkgbuildPath string) (string, int, int, error) {
 	cmdText := `
 set -e
 
@@ -224,22 +224,22 @@ echo "${_r_pkgrel}"
 	err := cmd.Run()
 
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
 
 	parts := misc.FilterEmptyString(strings.Split(stdoutBuf.String(), "\n"))
 
 	if len(parts) != 2 {
-		return "", 0, errors.New(fmt.Sprintf("invalid pkgver result: %s", stdoutBuf.String()))
+		return "", 0, 0, errors.New(fmt.Sprintf("invalid pkgver result: %s", stdoutBuf.String()))
 	}
 
-	pkgrel, err := strconv.Atoi(parts[1])
+	pkgrel, subpkgrel, err := getPkgrelParts(parts[1])
 
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
 
-	return parts[0], pkgrel, nil
+	return parts[0], pkgrel, subpkgrel, nil
 }
 
 func getPkgbuildVersionParts(pkgbuildPath string) (string, string, int, int, error) {
@@ -265,37 +265,44 @@ echo "${pkgrel}"
 	}
 
 	parts := strings.Split(stdoutBuf.String(), "\n")
+	pkgrel, subpkgrel, err := getPkgrelParts(parts[2])
 
-	epoch := parts[0]
-	pkgver := parts[1]
-	pkgrel := 0
-	subpkgrel := 0
+	if err != nil {
+		return "", "", 0, 0, err
+	}
 
-	if strings.Contains(parts[2], ".") {
-		pkgrelParts := strings.Split(parts[2], ".")
+	return parts[0], parts[1], pkgrel, subpkgrel, nil
+}
+
+func getPkgrelParts(pkgrel string) (int, int, error) {
+	intpkgrel := 0
+	intsubpkgrel := 0
+
+	if strings.Contains(pkgrel, ".") {
+		pkgrelParts := strings.Split(pkgrel, ".")
 
 		if len(pkgrelParts) != 2 {
-			return "", "", 0, 0, errors.New("invalid pkgrel")
+			return 0, 0, errors.New("invalid pkgrel")
 		}
 
-		pkgrel, err = strconv.Atoi(pkgrelParts[0])
-
-		if err != nil {
-			return "", "", 0, 0, err
+		if val, err := strconv.Atoi(pkgrelParts[0]); err != nil {
+			return 0, 0, err
+		} else {
+			intpkgrel = val
 		}
 
-		subpkgrel, err = strconv.Atoi(pkgrelParts[1])
-
-		if err != nil {
-			return "", "", 0, 0, err
+		if val, err := strconv.Atoi(pkgrelParts[1]); err != nil {
+			return 0, 0, err
+		} else {
+			intsubpkgrel = val
 		}
 	} else {
-		pkgrel, err = strconv.Atoi(parts[2])
-
-		if err != nil {
-			return "", "", 0, 0, err
+		if val, err := strconv.Atoi(pkgrel); err != nil {
+			return 0, 0, err
+		} else {
+			intpkgrel = val
 		}
 	}
 
-	return epoch, pkgver, pkgrel, subpkgrel, nil
+	return intpkgrel, intsubpkgrel, nil
 }

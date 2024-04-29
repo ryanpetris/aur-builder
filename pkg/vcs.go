@@ -62,7 +62,7 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 		return false, err
 	}
 
-	vcsPkgver, vcsPkgrel, err := GetMergedVcsPkgver(pkgbase)
+	vcsPkgver, vcsPkgrel, vcsSubPkgrel, err := GetMergedVcsPkgver(pkgbase)
 
 	if err != nil {
 		return false, err
@@ -71,6 +71,10 @@ func (pconfig *PackageConfig) GenVcsInfo(pkgbase string) (bool, error) {
 	vcinfo := &PackageVcs{}
 	vcinfo.Pkgver = vcsPkgver
 	vcinfo.Pkgrel = vcsPkgrel
+
+	if vcsSubPkgrel > 0 {
+		vcinfo.Pkgrel++
+	}
 
 	if pconfig.Vcs != nil {
 		vcinfo.Submodules = pconfig.Vcs.Submodules
