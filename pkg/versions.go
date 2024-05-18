@@ -204,7 +204,7 @@ set -e
 
 source "${1}"
 
-_r_pkgver="$([[ "$(type -t pkgver || true)" == "function" ]] && pkgver || echo "$pkgver")"
+_r_pkgver="$([[ "$(type -t pkgver || true)" == "function" ]] && srcdir='src' pkgver || echo "$pkgver")"
 _r_pkgrel="1"
 
 if [[ "$pkgver" == "$_r_pkgver" ]]; then
