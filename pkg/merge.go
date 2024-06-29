@@ -12,6 +12,7 @@ import (
 func (pconfig *PackageConfig) ClearMerge(pkgbase string) error {
 	basePath := config.GetPackagePath(pkgbase)
 	mergedPath := config.GetMergedPath(pkgbase)
+	scriptOverridePath := config.GetScriptOverridePath(pkgbase)
 
 	if _, err := os.Stat(basePath); err != nil {
 		return err
@@ -19,6 +20,12 @@ func (pconfig *PackageConfig) ClearMerge(pkgbase string) error {
 
 	if _, err := os.Stat(mergedPath); err == nil {
 		if err = os.RemoveAll(mergedPath); err != nil {
+			return err
+		}
+	}
+
+	if _, err := os.Stat(scriptOverridePath); err == nil {
+		if err = os.RemoveAll(scriptOverridePath); err != nil {
 			return err
 		}
 	}
@@ -33,6 +40,7 @@ func (pconfig *PackageConfig) Merge(pkgbase string, processVcs bool) error {
 	localPath := config.GetLocalPath(pkgbase)
 	mergedPath := config.GetMergedPath(pkgbase)
 	scriptsPath := config.GetScriptsPath(pkgbase)
+	scriptOverridePath := config.GetScriptOverridePath(pkgbase)
 	upstreamPath := config.GetUpstreamPath(pkgbase)
 	pkgbuildPath := path.Join(mergedPath, "PKGBUILD")
 	onprepareScriptPath := path.Join(scriptsPath, "onprepare.sh")
@@ -71,6 +79,14 @@ func (pconfig *PackageConfig) Merge(pkgbase string, processVcs bool) error {
 
 	if _, err := os.Stat(localPath); err == nil {
 		cmd := exec.Command("cp", "-ra", fmt.Sprintf("%s/.", localPath), mergedPath)
+
+		if err = cmd.Run(); err != nil {
+			return err
+		}
+	}
+
+	if _, err := os.Stat(scriptOverridePath); err == nil {
+		cmd := exec.Command("cp", "-ra", fmt.Sprintf("%s/.", scriptOverridePath), mergedPath)
 
 		if err = cmd.Run(); err != nil {
 			return err

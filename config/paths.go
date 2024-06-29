@@ -61,6 +61,16 @@ func (config *Config) GetScriptsPath(pkgbase string) string {
 	return filepath.Join(config.GetPackagePath(pkgbase), scriptsPath)
 }
 
+func (config *Config) GetScriptOverridePath(pkgbase string) string {
+	scriptsPath := config.ScriptOverridePath
+
+	if scriptsPath == "" {
+		scriptsPath = "script-override"
+	}
+
+	return filepath.Join(config.GetPackagePath(pkgbase), scriptsPath)
+}
+
 func (config *Config) GetUpstreamPath(pkgbase string) string {
 	upstreamPath := config.UpstreamPath
 

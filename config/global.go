@@ -51,6 +51,12 @@ func GetScriptsPath(pkgbase string) string {
 	return config.GetScriptsPath(pkgbase)
 }
 
+func GetScriptOverridePath(pkgbase string) string {
+	config := GetGlobalConfig()
+
+	return config.GetScriptOverridePath(pkgbase)
+}
+
 func GetUpstreamPath(pkgbase string) string {
 	config := GetGlobalConfig()
 

@@ -6,12 +6,13 @@ import (
 )
 
 type Config struct {
-	BasePath     string `yaml:"basePath,omitempty"`
-	ConfigPath   string `yaml:"configPath,omitempty"`
-	LocalPath    string `yaml:"localPath,omitempty"`
-	MergedPath   string `yaml:"mergedPath,omitempty"`
-	ScriptsPath  string `yaml:"scriptsPath,omitempty"`
-	UpstreamPath string `yaml:"upstreamPath,omitempty"`
+	BasePath           string `yaml:"basePath,omitempty"`
+	ConfigPath         string `yaml:"configPath,omitempty"`
+	LocalPath          string `yaml:"localPath,omitempty"`
+	MergedPath         string `yaml:"mergedPath,omitempty"`
+	ScriptsPath        string `yaml:"scriptsPath,omitempty"`
+	ScriptOverridePath string `yaml:"scriptOverridePath,omitempty"`
+	UpstreamPath       string `yaml:"upstreamPath,omitempty"`
 
 	AurBaseUrl      string `yaml:"aurBaseUrl,omitempty"`
 	AurPackagesPath string `yaml:"aurPackagesUrl,omitempty"`
