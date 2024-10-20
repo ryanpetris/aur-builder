@@ -55,13 +55,24 @@ func (env ForgejoCiEnv) CreatePR() error {
 		return err
 	}
 
+	authUsername := "me"
+	authPassword := os.Getenv("GITHUB_TOKEN")
+
+	if val := os.Getenv("REPOSITORY_WRITE_USERNAME"); val != "" {
+		authUsername = val
+	}
+
+	if val := os.Getenv("REPOSITORY_WRITE_TOKEN"); val != "" {
+		authPassword = val
+	}
+
 	cmd := exec.Command(
 		"curl", "-X", "POST",
 		fmt.Sprintf("%s/repos/%s/pulls", os.Getenv("GITHUB_API_URL"), os.Getenv("GITHUB_REPOSITORY")),
 		"--insecure",
 		"--silent",
 		"--fail",
-		"--user", fmt.Sprintf("me:%s", os.Getenv("GITHUB_TOKEN")),
+		"--user", fmt.Sprintf("%s:%s", authUsername, authPassword),
 		"--header", "Content-Type: application/json",
 		"--data-raw", string(dataBytes),
 	)
