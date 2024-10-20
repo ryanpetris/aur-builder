@@ -60,6 +60,7 @@ func (env ForgejoCiEnv) CreatePR() error {
 		fmt.Sprintf("%s/repos/%s/pulls", os.Getenv("GITHUB_API_URL"), os.Getenv("GITHUB_REPOSITORY")),
 		"--insecure",
 		"--silent",
+		"--fail",
 		"--user", fmt.Sprintf("me:%s", os.Getenv("GITHUB_TOKEN")),
 		"--header", "Content-Type: application/json",
 		"--data-raw", string(dataBytes),
