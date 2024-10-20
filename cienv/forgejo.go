@@ -7,7 +7,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	git2 "github.com/ryanpetris/aur-builder/git"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,22 +28,25 @@ func (env ForgejoCiEnv) CreatePR() error {
 		return errors.New("Not in CI environment")
 	}
 
-	branch, err := git2.GetCurrentBranchName()
+	branchBytes, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
 
 	if err != nil {
 		return err
 	}
 
-	commitLog, err := git2.GetLastCommitLog()
+	branchName := strings.SplitN(string(branchBytes), "\n", 2)[0]
+	messageBytes, err := exec.Command("git", "log", "-n", "1", "--pretty=%B").Output()
 
 	if err != nil {
 		return err
 	}
+
+	title := strings.SplitN(string(messageBytes), "\n", 2)[0]
 
 	data := map[string]any{
-		"head":  branch,
+		"head":  branchName,
 		"base":  "master",
-		"title": strings.SplitN(commitLog.Message, "\n", 2)[0],
+		"title": title,
 	}
 
 	dataBytes, err := json.Marshal(data)
