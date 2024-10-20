@@ -88,8 +88,9 @@ func PushPackageBranch(pkgbase string, pkgver string) error {
 	}
 
 	pushOptions := git.PushOptions{
-		RemoteName: "origin",
-		RefSpecs:   []config.RefSpec{config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/heads/%s", branchRef, branchRef))},
+		RemoteName:      "origin",
+		RefSpecs:        []config.RefSpec{config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/heads/%s", branchRef, branchRef))},
+		InsecureSkipTLS: insecureSkipTls,
 	}
 
 	ce := cienv.FindCiEnv()

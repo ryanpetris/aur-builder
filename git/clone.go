@@ -23,8 +23,9 @@ func CloneUpstream(pkgbase string, url string, tag string) error {
 	}
 
 	cloneOptions := &git.CloneOptions{
-		URL:   url,
-		Depth: 1,
+		URL:             url,
+		Depth:           1,
+		InsecureSkipTLS: insecureSkipTls,
 	}
 
 	if tag != "" {
