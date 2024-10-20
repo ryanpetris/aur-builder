@@ -105,3 +105,19 @@ func PushPackageBranch(pkgbase string, pkgver string) error {
 
 	return nil
 }
+
+func GetCurrentBranchName() (string, error) {
+	repo, err := git.PlainOpen(".")
+
+	if err != nil {
+		return "", err
+	}
+
+	branch, err := repo.Head()
+
+	if err != nil {
+		return "", err
+	}
+
+	return branch.Name().String(), nil
+}
