@@ -8,6 +8,10 @@ import (
 type AurImportEnv struct {
 }
 
+func (ienv AurImportEnv) IsLocalEnv() bool {
+	return false
+}
+
 func (ienv AurImportEnv) GetPackageInfo(pkgname []string) ([]misc.PackageInfo, error) {
 	data, err := aur.GetPackageInfos(pkgname)
 

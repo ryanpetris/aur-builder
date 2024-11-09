@@ -40,6 +40,30 @@ func (pconfig *PackageConfig) CleanPkgrelBumpVersions(pkgver string) error {
 	return nil
 }
 
+func GetLocalPkgnames(pkgbase string) ([]string, error) {
+	basePath := config.GetLocalPath(pkgbase)
+	pkgbuildPath := path.Join(basePath, "PKGBUILD")
+
+	return getPkgbuildPkgnames(pkgbuildPath)
+}
+
+func GetLocalVersion(pkgbase string) (string, error) {
+	epoch, pkgver, pkgrel, subpkgrel, err := GetLocalVersionParts(pkgbase)
+
+	if err != nil {
+		return "", err
+	}
+
+	return GetVersionString(epoch, pkgver, pkgrel, subpkgrel), nil
+}
+
+func GetLocalVersionParts(pkgbase string) (string, string, int, int, error) {
+	basePath := config.GetLocalPath(pkgbase)
+	pkgbuildPath := path.Join(basePath, "PKGBUILD")
+
+	return getPkgbuildVersionParts(pkgbuildPath)
+}
+
 func GetMergedPkgnames(pkgbase string) ([]string, error) {
 	basePath := config.GetMergedPath(pkgbase)
 	pkgbuildPath := path.Join(basePath, "PKGBUILD")

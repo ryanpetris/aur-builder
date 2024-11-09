@@ -35,6 +35,8 @@ func UpdateMain(args []string) {
 		ienv = impenv.AurImportEnv{}
 	case "arch":
 		ienv = impenv.ArchImportEnv{}
+	case "local":
+		ienv = impenv.LocalImportEnv{}
 	default:
 		panic(fmt.Sprintf("Invalid source: %s", *cmdSource))
 	}
@@ -58,8 +60,13 @@ func UpdateMain(args []string) {
 
 		if pconfig.Source == source {
 			updatePkgbase = append(updatePkgbase, pkgbase)
+			var pkgnames []string
 
-			pkgnames, err := pkg.GetUpstreamPkgnames(pkgbase)
+			if ienv.IsLocalEnv() {
+				pkgnames, err = pkg.GetLocalPkgnames(pkgbase)
+			} else {
+				pkgnames, err = pkg.GetUpstreamPkgnames(pkgbase)
+			}
 
 			if err != nil {
 				panic(err)
@@ -90,7 +97,11 @@ func UpdateMain(args []string) {
 				Packages:          []misc.PackageInfo{pkginfo},
 			}
 
-			tracker.UpstreamVersion, err = pkg.GetUpstreamVersion(pkginfo.Pkgbase)
+			if ienv.IsLocalEnv() {
+				tracker.UpstreamVersion, err = pkg.GetLocalVersion(pkginfo.Pkgbase)
+			} else {
+				tracker.UpstreamVersion, err = pkg.GetUpstreamVersion(pkginfo.Pkgbase)
+			}
 
 			if err != nil {
 				panic(err)
@@ -126,7 +137,7 @@ func UpdateMain(args []string) {
 			continue
 		}
 
-		slog.Info(fmt.Sprintf("Updating package %s", tracker.Pkgbase))
+		slog.Info(fmt.Sprintf("Updating package %s to version %s", tracker.Pkgbase, tracker.RepositoryVersion))
 
 		if cenv.IsCI() {
 			if err := git.CreateAndSwitchToPackageUpdateBranch(tracker.Pkgbase, tracker.RepositoryVersion); err != nil {

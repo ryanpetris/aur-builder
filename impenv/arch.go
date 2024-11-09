@@ -8,6 +8,10 @@ import (
 type ArchImportEnv struct {
 }
 
+func (ienv ArchImportEnv) IsLocalEnv() bool {
+	return false
+}
+
 func (ienv ArchImportEnv) GetPackageInfo(pkgname []string) ([]misc.PackageInfo, error) {
 	data, err := arch.GetPackages(pkgname)
 
