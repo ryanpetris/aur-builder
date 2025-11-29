@@ -1,12 +1,15 @@
 package aur
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
-	"github.com/ryanpetris/aur-builder/config"
-	"gopkg.in/yaml.v3"
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/ryanpetris/aur-builder/config"
+	"gopkg.in/yaml.v3"
 )
 import "net/http"
 
@@ -28,6 +31,25 @@ func PackageExists(pkgbase string) (bool, error) {
 		if err != nil {
 			packagesOnceErr = &err
 			return
+		}
+
+		// Check if data is gzipped by looking for gzip magic numbers
+		if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
+			reader, err := gzip.NewReader(bytes.NewReader(data))
+
+			if err != nil {
+				packagesOnceErr = &err
+				return
+			}
+
+			defer reader.Close()
+
+			data, err = io.ReadAll(reader)
+
+			if err != nil {
+				packagesOnceErr = &err
+				return
+			}
 		}
 
 		dataStr := strings.Split(string(data), "\n")
